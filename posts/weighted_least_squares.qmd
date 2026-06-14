@@ -1,0 +1,329 @@
+---
+title: "Weighted least squares: fixing the wrong problem?"
+author: "Calibration simulation series"
+format:
+  html:
+    toc: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+# Weighted least squares: fixing the wrong problem?
+
+In the previous post we introduced a common problem in analytical calibration:
+
+**the variability of measurements may change across the calibration range.**
+
+A linear calibration can still look correct.
+
+But the uncertainty associated with low and high concentrations can be very different.
+
+---
+
+# The next step
+
+If variability changes with concentration:
+
+Should we still use ordinary least squares?
+
+Ordinary least squares gives the same importance to every point.
+
+But a point with high uncertainty should probably contribute less than a highly precise point.
+
+This is the idea behind **weighted least squares (WLS).**
+
+---
+
+# The hidden challenge
+
+Weighted regression requires weights.
+
+But where do these weights come from?
+
+Common choices include:
+
+- experimentally estimated weights
+- \(1/x\)
+- \(1/x^2\)
+
+Only the first option is statistically sound, the other two are common in analytical chemistry as they model common response uncertainty patterns.
+
+Are they equivalent?
+
+Let's simulate the problem.
+
+# Simulation setup
+
+We use the same heteroscedastic linear system from the previous episode.
+
+The response is linear.
+
+The variance increases with concentration.
+
+The only difference is the regression model.
+
+```{r}
+#| label: resources
+library(here)
+library(data.table)
+library(ggplot2)
+
+source(here("R", "response_functions.R"))
+source(here("R", "variance_functions.R"))
+source(here("R", "design_functions.R"))
+source(here("R", "simulation_functions.R"))
+source(here("R", "fit_functions.R"))
+source(here("R", "prediction_functions.R"))
+source(here("R", "metrics_functions.R"))
+source(here("R", "plotting_functions.R"))
+source(here("R", "weight_functions.R"))
+```
+
+```{r}
+#| label: set_designs
+set.seed(123)
+
+mean_fun <- f_linear
+
+variance_fun <- function(x) {
+
+  sigma_constant_rsd(
+    x,
+    mean_fun = mean_fun,
+    rsd = 0.10
+  )
+
+}
+
+designs <- list(
+  "15 x 1" = design_15x1(1, 100),
+  "5 x 3"  = design_5x3(1, 100),
+  "3 x 5"  = design_3x5(1, 100)
+)
+```
+
+## Simulate calibration data
+
+Let's use the data from the previous episode:
+
+```{r}
+#| label: calibration_data
+calibration_data <- lapply(
+  designs,
+  function(design) {
+
+    simulate_dataset(
+      design,
+      mean_fun,
+      variance_fun
+    )
+
+  }
+)
+
+plot_design(
+  calibration_data[["15 x 1"]],
+  mean_fun
+)
+```
+
+## Fit different regression models
+
+We compare:
+
+- ordinary least squares
+- WLS with experimentally estimated weights
+- WLS with \[1/x\]
+- WLS with \[1/x^2\]
+- ideal WLS using the true variance (simulation benchmark)
+
+
+```{r}
+#| label: compare_models
+models <- lapply(
+  calibration_data,
+  function(dt) {
+
+    list(
+
+      "OLS" = fit_ols(dt),
+
+      "WLS estimated" = fit_wls_empirical(dt),
+
+      "WLS 1/x" = fit_wls_x(dt),
+
+      "WLS 1/x2" = fit_wls_x2(dt),
+
+      "WLS true" = fit_wls_true(dt)
+
+    )
+
+  }
+)
+```
+
+## Generate new samples
+
+A calibration model should predict unknown samples.
+
+```{r}
+#| label: test_models
+test_data <- generate_test_set(
+  n = 1000,
+  xmin = 0,
+  xmax = 100,
+  mean_fun = mean_fun,
+  variance_fun = variance_fun
+)
+```
+
+## Prediction performance
+
+Convert model output into a common format.
+
+```{r}
+#| label: prediction_summary
+prediction_tables <- lapply(
+  models,
+  function(model_set) {
+
+    lapply(
+      model_set,
+      predict_calibration_model,
+      test_data = test_data
+    )
+
+  }
+)
+```
+
+## Prediction error
+
+```{r}
+#| label: prediction_error
+rmse_results <- rbindlist(
+  lapply(
+    names(prediction_tables),
+    function(design_name) {
+
+      data.table(
+        design = design_name,
+        model = names(prediction_tables[[design_name]]),
+        rmse = sapply(
+          prediction_tables[[design_name]],
+          metric_rmse
+        )
+      )
+
+    }
+  )
+)
+
+rmse_results
+```
+
+The result is a single number, but it hides where the model performs poorly.
+
+Let's look at the full profile.
+
+
+```{r}
+#| label: fig_prediction_error
+plot_prediction_error(
+  prediction_tables[["5 x 3"]][["OLS"]]
+)
+
+plot_prediction_error(
+  prediction_tables[["5 x 3"]][["WLS estimated"]]
+)
+
+plot_prediction_error(
+  prediction_tables[["5 x 3"]][["WLS 1/x"]]
+)
+
+plot_prediction_error(
+  prediction_tables[["5 x 3"]][["WLS 1/x2"]]
+)
+
+plot_prediction_error(
+  prediction_tables[["5 x 3"]][["WLS true"]]
+)
+
+plot_prediction_error(
+  prediction_tables[["3 x 5"]][["OLS"]]
+)
+
+plot_prediction_error(
+  prediction_tables[["3 x 5"]][["WLS estimated"]]
+)
+
+plot_prediction_error(
+  prediction_tables[["3 x 5"]][["WLS 1/x"]]
+)
+
+plot_prediction_error(
+  prediction_tables[["3 x 5"]][["WLS 1/x2"]]
+)
+
+plot_prediction_error(
+  prediction_tables[["3 x 5"]][["WLS true"]]
+)
+```
+
+## Prediction uncertainty
+
+Accuracy is not the only objective.
+
+A calibration model should also estimate uncertainty correctly.
+
+```{r}
+#| label: prediction_uncertainty
+pi_width_results <- summarise_metrics(
+  prediction_tables,
+  metric_mean_pi_width
+)
+
+pi_width_results
+```
+
+## Coverage of prediction intervals
+
+A 95% prediction interval should contain the true value approximately 95% of the time.
+
+```{r}
+#| label: prediction_coverage
+coverage_results <- summarise_metrics(
+  prediction_tables,
+  metric_coverage
+)
+
+coverage_results
+```
+
+## Comparing the residual structure
+
+```{r}
+ggplot(
+  rmse_results,
+  aes(
+    x = model,
+    y = rmse
+  )
+) +
+geom_col() +
+facet_wrap(~design)
+```
+
+## Conclusions
+
+Weighted least squares can improve calibration when variability changes with concentration, but the choice of weights matters.
+
+Using \[1/x^2\] is common, but it assumes a constant relative standard deviation (RSD) across the entire calibration range.
+
+The real question is: do our weights describe the actual analytical uncertainty?
+
+## Next
+
+In the next episode we will test a more realistic situation: what if the RSD increases moving towards the limit of quantification (LoQ)?

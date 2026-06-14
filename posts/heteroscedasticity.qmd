@@ -1,0 +1,258 @@
+---
+title: "Calibration curves are not only about linearity"
+author: "Calibration simulation series"
+format:
+  html:
+    toc: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+# Calibration curves are not only about linearity
+
+In the previous post we compared different ways to distribute a fixed number of calibration measurements.
+
+The conclusion was simple:
+
+A calibration design does not only define the curve.
+
+It defines what information we can extract from the experiment.
+
+But there is another problem that is often ignored:
+
+**Are all calibration points equally precise?**
+
+
+# The hidden assumption behind ordinary least squares
+
+Ordinary least squares assumes that the variability of measurements is constant.
+
+In other words:
+
+small concentrations and high concentrations should have comparable uncertainty.
+
+But many analytical methods do not behave this way.
+
+Examples:
+
+- instrumental noise
+- low level quantification
+- detector response
+- trace analysis
+
+often show increasing variability across the calibration range.
+
+This phenomenon is called **heteroscedasticity**.
+
+# Simulation setup
+
+We compare the same three calibration designs:
+
+- 15 different calibration levels
+- 5 levels measured in triplicate
+- 3 levels measured five times
+
+The total number of measurements is always 15.
+
+```{r}
+#| label: resources
+library(here)
+library(data.table)
+library(ggplot2)
+
+source(here("R", "response_functions.R"))
+source(here("R", "variance_functions.R"))
+source(here("R", "design_functions.R"))
+source(here("R", "simulation_functions.R"))
+source(here("R", "fit_functions.R"))
+source(here("R", "prediction_functions.R"))
+source(here("R", "metrics_functions.R"))
+source(here("R", "plotting_functions.R"))
+```
+
+
+```{r}
+#| label: set_designs
+set.seed(123)
+
+mean_fun <- f_linear
+
+variance_fun <- function(x) {
+
+  sigma_constant_rsd(
+    x,
+    mean_fun = mean_fun,
+    rsd = 0.10
+  )
+
+}
+
+designs <- list(
+  "15 x 1" = design_15x1(1, 100),
+  "5 x 3"  = design_5x3(1, 100),
+  "3 x 5"  = design_3x5(1, 100)
+)
+```
+
+## Simulate calibration data
+
+```{r}
+#| label: calibration_data
+calibration_data <- lapply(
+  designs,
+  function(design) {
+
+    simulate_dataset(
+      design,
+      mean_fun,
+      variance_fun
+    )
+
+  }
+)
+
+plot_design(
+  calibration_data[["15 x 1"]],
+  mean_fun
+)
+```
+
+The underlying response is still perfectly linear, the difference is only in the variance.
+
+## Visualising heteroscedasticity
+
+A useful diagnostic is the residual.
+
+If variability increases with concentration, residuals should spread out.
+
+```{r}
+#| label: residuals
+model_example <- fit_ols(
+  calibration_data[["15 x 1"]]
+)
+
+plot_residuals(
+  model_example
+)
+```
+
+## Fit ordinary least squares models
+
+For now, all designs are analysed using the same model.
+
+```{r}
+#| label: fit_models 
+models <- lapply(
+  calibration_data,
+  fit_ols
+)
+```
+
+## Generate new unknown samples
+
+A calibration curve should not only describe the standards used to build it.
+
+It should predict future samples.
+
+```{r}
+#| label: test_models
+test_data <- generate_test_set(
+  n = 1000,
+  xmin = 0,
+  xmax = 100,
+  mean_fun = mean_fun,
+  variance_fun = variance_fun
+)
+```
+
+## Prediction performance
+
+Convert model output into a common format.
+
+```{r}
+#| label: prediction_summary
+prediction_tables <- lapply(
+  models,
+  predict_calibration_model,
+  test_data = test_data
+)
+```
+
+## Prediction error
+
+```{r}
+#| label: prediction_error
+lapply(
+  prediction_tables,
+  metric_rmse
+)
+```
+
+The result is a single number, but it hides where the model performs poorly.
+
+Let's look at the full profile.
+
+```{r}
+#| label: fig_prediction_error
+plot_prediction_error(
+  prediction_tables[["15 x 1"]]
+)
+
+plot_prediction_error(
+  prediction_tables[["5 x 3"]]
+)
+
+plot_prediction_error(
+  prediction_tables[["3 x 5"]]
+)
+```
+
+## Prediction uncertainty
+
+Another important question:
+
+How wide is the prediction interval?
+
+```{r}
+#| label: prediction_uncertainty
+lapply(
+  prediction_tables,
+  metric_mean_pi_width
+)
+```
+
+The calibration curve may look acceptable while uncertainty is poorly estimated.
+
+## Can we detect heteroscedasticity?
+
+With no replicates, estimating variability at each concentration is difficult.
+
+Let's test whether the residual pattern is detected.
+
+```{r}
+#| label: heteroscedasticity_test
+hetero_detected <- sapply(
+  models,
+  metric_hetero_detected
+)
+
+hetero_detected
+```
+
+## Conclusions
+
+When the variance is not constant:
+
+- the response can still be linear
+- the calibration curve can still look good
+- uncertainty estimation can be wrong
+
+Replicates provide information about variability, but there is a trade-off: more replicates mean fewer concentration levels.
+
+## Next question
+
+If we know that variability changes with concentration: should we still use ordinary least squares?
+
+This leads to weighted least squares.

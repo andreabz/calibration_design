@@ -1,0 +1,257 @@
+---
+title: "How should we spend 15 calibration measurements?"
+author: "Calibration simulation series"
+format:
+  html:
+    toc: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+# How should we spend 15 calibration measurements?
+
+Analytical methods often require a calibration curve built from several standards.
+
+A common recommendation is:
+
+- use at least 5–7 calibration levels
+- distribute them across the working range
+- evaluate linearity
+
+But a practical question is rarely discussed:
+
+**If the total number of measurements is fixed, where should we spend them?**
+
+Imagine we have exactly 15 injections available.
+
+Three possible designs:
+
+1. 15 different calibration levels
+2. 5 calibration levels measured in triplicate
+3. 3 calibration levels measured five times
+
+Which one gives us the most useful information?
+
+## A provocative idea
+
+A chemometrician once proposed:
+
+> If the response is linear, use two extreme points, replicate them many times, and use a central point to check linearity.
+
+At first this sounds wrong compared with common laboratory practice.
+
+But it raises a more fundamental question:
+
+**Are we trying to estimate the shape of the curve, or the uncertainty of the measurement?**
+
+These are different problems.
+
+## Simulation setup
+
+We will compare three calibration designs.
+
+```{r}
+#| label: resources
+library(here)
+library(data.table)
+library(ggplot2)
+
+source(here("R", "response_functions.R"))
+source(here("R", "variance_functions.R"))
+source(here("R", "design_functions.R"))
+source(here("R", "simulation_functions.R"))
+source(here("R", "fit_functions.R"))
+source(here("R", "prediction_functions.R"))
+source(here("R", "metrics_functions.R"))
+source(here("R", "plotting_functions.R"))
+```
+
+We start with a simple linear response and constant variance.
+
+```{r}
+#| label: set_designs
+set.seed(123)
+
+mean_fun <- f_linear
+
+variance_fun <- sigma_homo
+
+designs <- list(
+  "15 x 1" = design_15x1(1, 100),
+  "5 x 3"  = design_5x3(1, 100),
+  "3 x 5"  = design_3x5(1, 100)
+)
+```
+
+## Visual comparison of designs
+
+```{r}
+#| label: compare_designs
+design_plot_data <- rbindlist(
+  lapply(
+    names(designs),
+    function(name) {
+
+      dt <- copy(designs[[name]])
+      dt[, design := name]
+      dt
+
+    }
+  )
+)
+
+plot_design_comparison(design_plot_data)
+```
+
+The three approaches use the same number of measurements.
+
+The difference is where the information is allocated.
+
+## Simulate calibration data
+
+```{r}
+#| label: calibration_data
+calibration_data <- lapply(
+  designs,
+  function(design) {
+
+    simulate_dataset(
+      design,
+      mean_fun,
+      variance_fun
+    )
+
+  }
+)
+
+plot_design(
+  calibration_data[["15 x 1"]],
+  mean_fun
+)
+```
+
+## Fit a classical linear model
+
+For this first example we use ordinary least squares.
+
+```{r}
+#| label: fit_models 
+models <- lapply(
+  calibration_data,
+  fit_ols
+)
+```
+
+## Generate new unknown samples
+
+A calibration curve should not only describe the standards used to build it.
+
+It should predict future samples.
+
+```{r}
+#| label: test_models
+test_data <- generate_test_set(
+  n = 1000,
+  xmin = 0,
+  xmax = 100,
+  mean_fun = mean_fun,
+  variance_fun = variance_fun
+)
+```
+
+## Prediction performance
+
+Convert model output into a common format.
+
+```{r}
+#| label: prediction_summary
+prediction_tables <- lapply(
+  models,
+  predict_calibration_model,
+  test_data = test_data
+)
+```
+
+## Prediction error
+
+```{r}
+#| label: prediction_error
+lapply(
+  prediction_tables,
+  metric_rmse
+)
+```
+
+The result is a single number, but it hides where the model performs poorly.
+
+Let's look at the full profile.
+
+```{r}
+#| label: fig_prediction_error
+plot_prediction_error(
+  prediction_tables[["15 x 1"]]
+)
+
+plot_prediction_error(
+  prediction_tables[["5 x 3"]]
+)
+
+plot_prediction_error(
+  prediction_tables[["3 x 5"]]
+)
+```
+
+## Prediction uncertainty
+
+Another important question:
+
+How wide is the prediction interval?
+
+```{r}
+#| label: prediction_uncertainty
+lapply(
+  prediction_tables,
+  metric_mean_pi_width
+)
+```
+
+A method can have a good average error but still have poor uncertainty estimation.
+
+## First conclusions
+
+In this ideal scenario:
+
+- the response is perfectly linear
+- the variance is constant
+- the model assumptions are correct
+
+The different designs can perform similarly.
+
+But the situation changes when reality enters:
+
+- variance changes with concentration
+- the curve approaches a plateau
+- low concentration points have higher relative variability
+
+Those are the scenarios we will explore next.
+
+---
+
+## Repository
+
+All simulations are reproducible.
+
+The complete code is available in the repository:
+
+- response functions
+- variance models
+- calibration designs
+- regression models
+- prediction metrics
+- plots
+
+The goal is not to find a single "best" calibration design.
+
+The goal is to understand what information each design provides.
