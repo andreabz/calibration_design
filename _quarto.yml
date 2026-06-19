@@ -1,0 +1,45 @@
+project:
+  type: website
+  output-dir: _site
+  render:
+    - index.qmd
+    - scripts/*.qmd
+    - posts/*.qmd
+
+website:
+  title: "Calibration Design Simulations"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - text: Source articles
+        menu:
+          - href: scripts/01_point_distribution.qmd
+            text: Calibration design
+          - href: scripts/02_heteroscedasticity.qmd
+            text: Heteroscedasticity
+          - href: scripts/03_weighted_least_squares.qmd
+            text: Weighted least squares
+          - href: scripts/04_loq_weight_mismatch.qmd
+            text: LOQ weight mismatch
+          - href: scripts/05_nonlinearity_detection.qmd
+            text: Downward non-linearity
+      - text: LinkedIn drafts
+        menu:
+          - href: posts/01_calibration_design_linkedin.qmd
+            text: Post 01
+          - href: posts/02_heteroscedasticity_linkedin.qmd
+            text: Post 02
+          - href: posts/03_weighted_least_squares_linkedin.qmd
+            text: Post 03
+          - href: posts/04_loq_weight_mismatch_linkedin.qmd
+            text: Post 04
+          - href: posts/05_nonlinearity_detection_linkedin.qmd
+            text: Post 05
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    code-fold: true
+    code-tools: true

@@ -3,5 +3,7 @@
 .RData
 .Ruserdata
 
+_site/
+*_files/
 *.html
-posts/*_files
+Rplots.pdf

@@ -1,0 +1,20 @@
+---
+title: "Calibration Design Simulations"
+format: html
+---
+
+This repository explores calibration design choices for chemical analysis using small, reproducible R simulations.
+
+The examples are written for analytical chemists, R users, and chemometricians who want to reason about calibration beyond the fitted line. The central question is how a fixed calibration budget should be distributed when the analyst cares about prediction error, uncertainty, weighting, low-level behavior, and evidence of linearity.
+
+## Source articles
+
+1. [Calibration design: how should we spend 15 measurements?](scripts/01_point_distribution.qmd)
+2. [Calibration curves are not only about linearity](scripts/02_heteroscedasticity.qmd)
+3. [When variability changes: introducing weighted least squares](scripts/03_weighted_least_squares.qmd)
+4. [When the weighting model is only partly true](scripts/04_loq_weight_mismatch.qmd)
+5. [Can calibration designs detect small downward non-linearity equally well?](scripts/05_nonlinearity_detection.qmd)
+
+## LinkedIn drafts
+
+Short copy-paste drafts are stored separately in [`posts/`](posts/) so the computational articles and social posts can evolve independently.
