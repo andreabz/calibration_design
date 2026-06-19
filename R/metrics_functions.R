@@ -1,7 +1,7 @@
 metric_rmse <- function(dt_pred) {
   sqrt(
     mean(
-      (dt_pred$y_pred - dt_pred$y_true)^2
+      (dt_pred$x_pred - dt_pred$x_true)^2
     )
   )
 }
@@ -9,25 +9,25 @@ metric_rmse <- function(dt_pred) {
 metric_mae <- function(dt_pred) {
   mean(
     abs(
-      dt_pred$y_pred -
-        dt_pred$y_true
+      dt_pred$x_pred -
+        dt_pred$x_true
     )
   )
 }
 
 metric_bias <- function(dt_pred) {
   mean(
-    dt_pred$y_pred -
-      dt_pred$y_true
+    dt_pred$x_pred -
+      dt_pred$x_true
   )
 }
 
 metric_bias_pct <- function(dt_pred) {
   mean(
     100 *
-      (dt_pred$y_pred -
-        dt_pred$y_true) /
-      dt_pred$y_true
+      (dt_pred$x_pred -
+        dt_pred$x_true) /
+      dt_pred$x_true
   )
 }
 
@@ -35,55 +35,55 @@ metric_rmse_pct <- function(dt_pred) {
   sqrt(
     mean(
       (100 *
-        (dt_pred$y_pred -
-          dt_pred$y_true) /
-        dt_pred$y_true)^2
+        (dt_pred$x_pred -
+          dt_pred$x_true) /
+        dt_pred$x_true)^2
     )
   )
 }
 
 metric_coverage <- function(dt_pred) {
   mean(
-    dt_pred$y_true >= dt_pred$lwr &
-      dt_pred$y_true <= dt_pred$upr
+    dt_pred$x_pred >= dt_pred$x_lpl &
+      dt_pred$x_pred <= dt_pred$x_upl
   )
 }
 
 metric_mean_pi_width <- function(dt_pred) {
   mean(
-    dt_pred$upr -
-      dt_pred$lwr
+    dt_pred$x_upl -
+      dt_pred$x_lpl
   )
 }
 
 metric_mean_pi_width_pct <- function(dt_pred) {
   mean(
     100 *
-      (dt_pred$upr -
-        dt_pred$lwr) /
-      dt_pred$y_pred
+      (dt_pred$x_upl -
+        dt_pred$x_lpl) /
+      dt_pred$x_pred
   )
 }
 
 metric_mean_upl <- function(dt_pred) {
   mean(
-    dt_pred$upr
+    dt_pred$x_upl
   )
 }
 
 metric_mean_upl_distance <- function(dt_pred) {
   mean(
-    dt_pred$upr -
-      dt_pred$y_pred
+    dt_pred$x_upl -
+      dt_pred$x_pred
   )
 }
 
 metric_mean_upl_pct <- function(dt_pred) {
   mean(
     100 *
-      (dt_pred$upr -
-        dt_pred$y_pred) /
-      dt_pred$y_pred
+      (dt_pred$x_upl -
+        dt_pred$x_pred) /
+      dt_pred$x_pred
   )
 }
 

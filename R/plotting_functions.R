@@ -165,14 +165,14 @@ plot_prediction_error <- function(
 
   dt[,
     error_pct := 100 *
-      (y_pred - y_true) /
-      y_true
+      (x_pred - x_true) /
+      x_true
   ]
 
   ggplot(
     dt,
     aes(
-      x = x,
+      x = x_true,
       y = error_pct
     )
   ) +
@@ -205,14 +205,14 @@ plot_upl_profile <- function(
 
   dt[,
     upl_pct := 100 *
-      (upr - y_pred) /
-      y_pred
+      (x_upl - x_pred) /
+      x_pred
   ]
 
   ggplot(
     dt,
     aes(
-      x = x,
+      x = x_true,
       y = upl_pct
     )
   ) +
@@ -281,4 +281,33 @@ plot_weights <- function(
     scale_y_log10() +
 
     theme_bw()
+}
+
+plot_inverse_calibration <- function(
+    dt
+) {
+
+  ggplot(
+    dt,
+    aes(
+      x = x_true,
+      y = x_pred
+    )
+  ) +
+
+    geom_point() +
+
+    geom_abline(
+      intercept = 0,
+      slope = 1,
+      linetype = 2
+    ) +
+
+    labs(
+      x = "True concentration",
+      y = "Predicted concentration"
+    ) +
+
+    theme_bw()
+
 }
