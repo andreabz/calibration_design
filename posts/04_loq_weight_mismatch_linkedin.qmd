@@ -1,0 +1,24 @@
+---
+title: "LinkedIn post 04 - Weight mismatch near LOQ"
+---
+
+Simple weighting rules can fail exactly where analytical chemists care most: near the LOQ.
+
+A clean constant-RSD assumption says that variance keeps decreasing as concentration decreases. Under that assumption, 1/x² weighting is reasonable.
+
+But near the low end, many methods have a noise floor. Blank variability, integration noise, and background correction do not vanish just because the concentration is small.
+
+So the real variance pattern may be mixed:
+
+- constant absolute error near the LOQ
+- approximately constant relative error farther from the LOQ
+
+In that situation, a global 1/x² weight can give too much influence to the lowest calibration points. Those points may not be as precise as the weight function assumes.
+
+The fitted line can still look acceptable. The problem shows up in low-level prediction error and interval coverage.
+
+My practical takeaway: do not judge weighting only by the global calibration plot or by R². Look at residuals, low-level recovery, replicate behavior, and uncertainty by concentration region.
+
+Weights should describe the method, not decorate the regression.
+
+#AnalyticalChemistry #LOQ #Chemometrics #RStats

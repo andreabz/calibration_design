@@ -1,0 +1,29 @@
+---
+title: "LinkedIn post 05 - Detecting downward non-linearity"
+---
+
+In chemical calibration, non-linearity usually bends downward.
+
+It often looks like the beginning of saturation: the signal still increases with concentration, but the slope starts to decrease. If we force a straight line through that response, high-level samples can become biased.
+
+I simulated a mild downward curvature and compared the same 15-measurement designs:
+
+- 15 levels measured once
+- 5 levels measured in triplicate
+- 3 levels measured five times
+
+The designs are not equally good at detecting curvature.
+
+Replicates are excellent for estimating precision at selected levels. But they do not create information between levels. If the analytical question is “is the response really linear?”, then the number and placement of concentration levels are critical.
+
+This is the trade-off I keep coming back to: calibration design depends on the question.
+
+Want repeatability? Use replicates.
+
+Want shape information? Use levels across the range.
+
+Want both? Then the design has to admit that both goals need measurement budget.
+
+Linearity is not proven by a nice-looking straight line through too few levels.
+
+#AnalyticalChemistry #Chemometrics #Calibration #RStats

@@ -1,0 +1,23 @@
+---
+title: "LinkedIn post 03 - Weighted least squares"
+---
+
+Weighted least squares is not a magic upgrade from ordinary least squares.
+
+It is a way of saying: some calibration points are measured more precisely than others, and the regression should know that.
+
+If a method has approximately constant relative standard deviation, the absolute standard deviation increases with concentration. In that case, inverse-variance weighting often makes sense. This is why analytical chemists often see weights like 1/x or 1/x².
+
+But these are not just formulas. They are assumptions about the measurement process.
+
+In my simulation, 1/x² behaved well when the data really had constant RSD. That is expected because variance is then roughly proportional to concentration squared.
+
+The important part is the word “when”.
+
+Using 1/x² because it is familiar is not the same as showing that the method has that variance structure. Empirical weights can help, but only if the calibration design includes enough replicated levels to estimate variance.
+
+This is where design and statistics meet. If we want to estimate precision from calibration data, we need replicates. If we want to describe curve shape, we need levels.
+
+Same injections. Different information.
+
+#AnalyticalChemistry #Chemometrics #RStats #WeightedLeastSquares
