@@ -1,3 +1,8 @@
+#' Fit ordinary least squares calibration
+#'
+#' @param dt Calibration `data.table` or `data.frame` with columns `x` and `y`.
+#'
+#' @return An `lm` object for `y ~ x`.
 fit_ols <- function(dt) {
   lm(
     y ~ x,
@@ -5,6 +10,11 @@ fit_ols <- function(dt) {
   )
 }
 
+#' Fit weighted least squares using 1/x weights
+#'
+#' @param dt Calibration data with columns `x` and `y`.
+#'
+#' @return An `lm` object for `y ~ x` fitted with `weights_x(dt$x)`.
 fit_wls_x <- function(dt) {
   lm(
     y ~ x,
@@ -13,6 +23,11 @@ fit_wls_x <- function(dt) {
   )
 }
 
+#' Fit weighted least squares using 1/x^2 weights
+#'
+#' @param dt Calibration data with columns `x` and `y`.
+#'
+#' @return An `lm` object for `y ~ x` fitted with `weights_x2(dt$x)`.
 fit_wls_x2 <- function(dt) {
   lm(
     y ~ x,
@@ -21,6 +36,11 @@ fit_wls_x2 <- function(dt) {
   )
 }
 
+#' Fit weighted least squares using known response standard deviations
+#'
+#' @param dt Calibration data with columns `x`, `y`, and `sigma`.
+#'
+#' @return An `lm` object for `y ~ x` fitted with inverse-variance weights.
 fit_wls_true <- function(dt) {
   lm(
     y ~ x,
@@ -29,11 +49,18 @@ fit_wls_true <- function(dt) {
   )
 }
 
+#' Fit weighted least squares using replicate-based variance estimates
+#'
+#' @param dt Calibration data with columns `x` and `y`. Replicated `x` values
+#'   are required to estimate empirical variances.
+#'
+#' @return An `lm` object for `y ~ x`. If no replicated levels are available,
+#'   OLS is returned with a warning.
 fit_wls_empirical <- function(dt) {
-  dt <- copy(dt)
+  dt <- data.table::copy(dt)
 
   dt[,
-    weight := if (.N > 1) {
+    weight := if (.N > 1 && var(y) > 0) {
       1 / var(y)
     } else {
       NA_real_
@@ -52,7 +79,7 @@ fit_wls_empirical <- function(dt) {
   }
 
   dt[,
-    weight := fifelse(
+    weight := data.table::fifelse(
       is.na(weight),
       median(weight, na.rm = TRUE),
       weight

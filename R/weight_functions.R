@@ -1,26 +1,19 @@
+#' Weight proportional to inverse concentration
+#'
+#' @param x Numeric vector of concentrations.
+#'
+#' @return Numeric vector of weights, using a small lower bound to avoid
+#'   division by zero.
 weights_x <- function(x) {
   1 / pmax(x, 1e-6)
 }
 
+#' Weight proportional to inverse squared concentration
+#'
+#' @param x Numeric vector of concentrations.
+#'
+#' @return Numeric vector of weights, using a small lower bound to avoid
+#'   division by zero.
 weights_x2 <- function(x) {
   1 / pmax(x, 1e-6)^2
-}
-
-weights_empirical <- function(dt) {
-  w <- dt[,
-    .(
-      variance = var(y)
-    ),
-    by = x
-  ]
-
-  w[,
-    weight := 1 / variance
-  ]
-
-  w
-}
-
-weights_true <- function(dt) {
-  1 / dt$sigma^2
 }
