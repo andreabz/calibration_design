@@ -1,0 +1,197 @@
+---
+title: "When variability changes: introducing weighted least squares"
+author: "Calibration simulation series"
+format:
+  html:
+    toc: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+# Why weights enter the story
+
+When the response variability changes with concentration, ordinary least squares still fits a line, but it fits that line as if every point had the same response variance. Weighted least squares changes the question. Instead of treating all residuals equally, it gives more influence to observations expected to be more precise.
+
+For approximately constant relative standard deviation, the response standard deviation is roughly proportional to concentration. The variance is then roughly proportional to concentration squared, which explains the common analytical rule $w = 1/x^2$.
+
+That rule is not magic. It is an assumption about the measurement process.
+
+# Setup
+
+```{r}
+#| label: resources
+
+library(here)
+library(data.table)
+library(ggplot2)
+library(knitr)
+
+source(here("R", "design_functions.R"))
+source(here("R", "weight_functions.R"))
+source(here("R", "fit_functions.R"))
+source(here("R", "inversion_functions.R"))
+source(here("R", "metrics_functions.R"))
+source(here("R", "plotting_functions.R"))
+source(here("R", "prediction_functions.R"))
+source(here("R", "response_functions.R"))
+source(here("R", "simulation_functions.R"))
+source(here("R", "variance_functions.R"))
+```
+
+```{r}
+#| label: setup
+
+set.seed(123)
+
+mean_fun <- f_linear
+sigma_fun <- function(x) {
+  sigma_constant_rsd(
+    x,
+    mean_fun = mean_fun,
+    rsd = 0.10
+  )
+}
+
+designs <- list(
+  "15 x 1" = design_15x1(1, 100),
+  "5 x 3" = design_5x3(1, 100),
+  "3 x 5" = design_3x5(1, 100)
+)
+```
+
+# Compare weight functions
+
+```{r}
+#| label: weight-plot
+#| fig-cap: "Different weighting rules encode different assumptions about variance."
+
+weight_grid <- data.table(
+  x = seq(1, 100, length.out = 200)
+)
+
+weight_plot_data <- rbindlist(
+  list(
+    data.table(
+      x = weight_grid$x,
+      method = "True inverse variance",
+      weight = 1 / sigma_fun(weight_grid$x)^2
+    ),
+    data.table(
+      x = weight_grid$x,
+      method = "1/x",
+      weight = weights_x(weight_grid$x)
+    ),
+    data.table(
+      x = weight_grid$x,
+      method = "1/x2",
+      weight = weights_x2(weight_grid$x)
+    )
+  )
+)
+
+plot_weights(weight_plot_data)
+```
+
+A steeper weight curve gives much more importance to the low concentration standards. That may be appropriate under constant RSD, but it becomes risky if the low end has a noise floor. The important question is therefore not whether a weighting rule is familiar, but whether it matches the method.
+
+# Fit OLS and WLS models
+
+```{r}
+#| label: calibration-and-models
+
+calibration_data <- lapply(
+  designs,
+  simulate_dataset,
+  mean_fun = mean_fun,
+  variance_fun = sigma_fun
+)
+
+models <- lapply(
+  calibration_data,
+  function(dt) {
+    list(
+      "OLS" = fit_ols(dt),
+      "WLS true" = fit_wls_true(dt),
+      "WLS estimated" = fit_wls_empirical(dt),
+      "WLS 1/x" = fit_wls_x(dt),
+      "WLS 1/x2" = fit_wls_x2(dt)
+    )
+  }
+)
+```
+
+Empirical WLS requires replicated concentration levels. With 15 unreplicated levels, the calibration experiment has no direct way to estimate the variance at each level, so the empirical approach falls back to OLS. That is not a coding detail; it is an experimental design consequence.
+
+# Prediction performance
+
+```{r}
+#| label: prediction
+
+test_data <- generate_test_set(
+  n = 1000,
+  xmin = 1,
+  xmax = 100,
+  mean_fun = mean_fun,
+  variance_fun = sigma_fun
+)
+
+prediction_tables <- lapply(
+  models,
+  function(model_set) {
+    lapply(
+      model_set,
+      predict_calibration_model,
+      test_data = test_data,
+      variance_fun = sigma_fun
+    )
+  }
+)
+```
+
+```{r}
+#| label: performance-table
+
+performance_table <- rbindlist(
+  lapply(
+    names(prediction_tables),
+    function(design_name) {
+      data.table(
+        design = design_name,
+        model = names(prediction_tables[[design_name]]),
+        rmse = sapply(prediction_tables[[design_name]], metric_rmse),
+        bias = sapply(prediction_tables[[design_name]], metric_bias),
+        coverage = sapply(prediction_tables[[design_name]], metric_coverage),
+        mean_interval_width = sapply(prediction_tables[[design_name]], metric_mean_pi_width)
+      )
+    }
+  )
+)
+
+kable(
+  performance_table,
+  digits = 3,
+  caption = "Prediction performance under constant relative measurement error."
+)
+```
+
+The true-variance WLS fit is the benchmark because it uses information that is available only in simulation. The simple $1/x^2$ rule should be close when the constant-RSD assumption is true. The $1/x$ rule is a milder correction, and empirical weighting depends strongly on whether the design contains enough replicates to estimate variability.
+
+```{r}
+#| label: error-profiles
+#| fig-cap: "Relative prediction error by design and model."
+
+for (design in names(prediction_tables)) {
+  for (model in names(prediction_tables[[design]])) {
+    print(
+      plot_prediction_error(prediction_tables[[design]][[model]]) +
+        labs(title = paste(design, model))
+    )
+  }
+}
+```
+
+# Take-home message
+
+Weighted least squares is useful because it connects calibration fitting with analytical precision. It is not a universal upgrade over OLS. If the weights describe the real variance structure, WLS can improve prediction and uncertainty. If the weights are only a habit, they can move the calibration in the wrong direction.

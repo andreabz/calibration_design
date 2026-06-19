@@ -1,0 +1,255 @@
+---
+title: "Can calibration designs detect small downward non-linearity equally well?"
+author: "Calibration simulation series"
+format:
+  html:
+    toc: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+# The chemical calibration problem
+
+In chemical calibration, non-linearity usually does not appear as a curve that bends upward forever. More often, the response begins to bend downward as the system approaches saturation, detector limitations, matrix effects, or the early part of a plateau.
+
+That direction matters. A downward bend means that high-concentration samples produce less signal than a purely linear extrapolation from the low range would suggest. If the analyst forces a straight line through that response, concentration estimates can become biased, especially near the high end.
+
+This episode asks whether the three 15-measurement designs detect small downward non-linearity equally well. The answer is expected to depend on both the number of distinct concentration levels and the measurement-error pattern.
+
+# Setup
+
+```{r}
+#| label: resources
+
+library(here)
+library(data.table)
+library(ggplot2)
+library(knitr)
+
+source(here("R", "design_functions.R"))
+source(here("R", "weight_functions.R"))
+source(here("R", "fit_functions.R"))
+source(here("R", "inversion_functions.R"))
+source(here("R", "metrics_functions.R"))
+source(here("R", "plotting_functions.R"))
+source(here("R", "prediction_functions.R"))
+source(here("R", "response_functions.R"))
+source(here("R", "simulation_functions.R"))
+source(here("R", "variance_functions.R"))
+```
+
+```{r}
+#| label: setup
+
+set.seed(456)
+
+mean_fun <- function(x) {
+  f_saturation_quadratic(
+    x,
+    slope = 1,
+    curvature = 0.0008
+  )
+}
+
+sigma_relative <- function(x) {
+  sigma_constant_rsd(
+    x,
+    mean_fun = mean_fun,
+    rsd = 0.08
+  )
+}
+
+curvature_detected <- function(dt, weights = NULL, alpha = 0.05) {
+  if (is.null(weights)) {
+    m_linear <- lm(y ~ x, data = dt)
+    m_quad <- lm(y ~ x + I(x^2), data = dt)
+  } else {
+    m_linear <- lm(y ~ x, data = dt, weights = weights)
+    m_quad <- lm(y ~ x + I(x^2), data = dt, weights = weights)
+  }
+
+  p_value <- anova(m_linear, m_quad)$`Pr(>F)`[2]
+
+  isTRUE(p_value < alpha)
+}
+
+designs <- list(
+  "15 x 1" = design_15x1(1, 100),
+  "5 x 3" = design_5x3(1, 100),
+  "3 x 5" = design_3x5(1, 100)
+)
+```
+
+# The downward curvature
+
+```{r}
+#| label: curve-plot
+#| fig-cap: "The simulated response bends downward, like the early stage of saturation."
+
+curve_grid <- data.table(
+  x = seq(1, 100, length.out = 300)
+)
+
+curve_grid[, y_curved := mean_fun(x)]
+curve_grid[, y_linear_reference := x]
+curve_grid[, difference_pct := 100 * (y_curved - y_linear_reference) / y_linear_reference]
+
+ggplot(curve_grid, aes(x = x)) +
+  geom_line(aes(y = y_curved), linewidth = 1) +
+  geom_line(aes(y = y_linear_reference), linetype = 2) +
+  labs(
+    x = "Concentration",
+    y = "Response"
+  ) +
+  theme_bw()
+
+ggplot(curve_grid, aes(x = x, y = difference_pct)) +
+  geom_line(linewidth = 1) +
+  labs(
+    x = "Concentration",
+    y = "Deviation from linear response (%)"
+  ) +
+  theme_bw()
+```
+
+The dashed line is the ideal linear response. The solid line remains increasing, but its slope decreases with concentration. This is the small and clinically familiar danger zone: the calibration can still look almost linear, while the high end is already beginning to lose response.
+
+# One noisy calibration
+
+```{r}
+#| label: example-calibration
+#| fig-cap: "A single noisy calibration may not make mild downward curvature obvious."
+
+example_data <- simulate_dataset(
+  design_15x1(1, 100),
+  mean_fun,
+  sigma_homo
+)
+
+plot_design(example_data, mean_fun)
+```
+
+Visual inspection is useful, but it is not enough. A small downward bend can be hidden by normal analytical scatter, especially if the design has few distinct concentration levels.
+
+# Repeated simulation
+
+For each simulated calibration, we compare a linear model with a quadratic model. When response error is constant, we use an unweighted comparison. When relative error is constant, we use inverse-variance weights so that the curvature test matches the error structure.
+
+```{r}
+#| label: detection-simulation
+
+n_sim <- 500
+
+simulate_detection <- function(design_name, design_fun, error_case) {
+  detections <- replicate(
+    n_sim,
+    {
+      if (error_case == "Constant absolute error") {
+        dt <- simulate_dataset(
+          design_fun(1, 100),
+          mean_fun,
+          sigma_homo
+        )
+
+        curvature_detected(dt)
+      } else {
+        dt <- simulate_dataset(
+          design_fun(1, 100),
+          mean_fun,
+          sigma_relative
+        )
+
+        curvature_detected(
+          dt,
+          weights = 1 / dt$sigma^2
+        )
+      }
+    }
+  )
+
+  data.table(
+    design = design_name,
+    error_case = error_case,
+    detection_rate = mean(detections)
+  )
+}
+
+design_functions <- list(
+  "15 x 1" = design_15x1,
+  "5 x 3" = design_5x3,
+  "3 x 5" = design_3x5
+)
+
+detection_results <- rbindlist(
+  lapply(
+    names(design_functions),
+    function(name) {
+      rbindlist(
+        list(
+          simulate_detection(
+            name,
+            design_functions[[name]],
+            "Constant absolute error"
+          ),
+          simulate_detection(
+            name,
+            design_functions[[name]],
+            "Constant relative error"
+          )
+        )
+      )
+    }
+  )
+)
+
+kable(
+  detection_results,
+  digits = 3,
+  caption = "Estimated probability of detecting mild downward curvature."
+)
+```
+
+```{r}
+#| label: detection-plot
+#| fig-cap: "Detection probability depends on the design and on the error structure."
+
+ggplot(
+  detection_results,
+  aes(
+    x = design,
+    y = detection_rate,
+    fill = error_case
+  )
+) +
+  geom_col(
+    position = position_dodge(width = 0.8),
+    width = 0.7
+  ) +
+  geom_hline(
+    yintercept = 0.05,
+    linetype = 2
+  ) +
+  scale_y_continuous(
+    limits = c(0, 1)
+  ) +
+  labs(
+    x = "Calibration design",
+    y = "Curvature detection rate",
+    fill = "Error structure"
+  ) +
+  theme_bw()
+```
+
+The dashed line marks the false-positive rate expected from a 5% test when no curvature exists. Detection rates above that line indicate that the design has some power to see the downward bend.
+
+# Interpretation
+
+The designs are not equally informative about shape. The 15-level design sees the curve at many positions and is therefore better suited to detecting gradual curvature. The five-level design has fewer positions but still gives some view of the bend. The three-level design can estimate repeatability at selected points, but it has limited information about what happens between them.
+
+This is the central trade-off. Replicates improve precision estimates, but they do not create new concentration levels. If the analytical question is linearity, the number and placement of levels are critical.
+
+# Take-home message
+
+In chemical calibration, small non-linearity should usually be imagined as downward curvature or the beginning of saturation. A design built mainly around replication may be useful for precision, but it is not automatically strong for detecting that curvature. The calibration plan should state explicitly whether the priority is repeatability, weighting, low-level uncertainty, or evidence of linearity.

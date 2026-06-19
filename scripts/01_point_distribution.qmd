@@ -1,0 +1,199 @@
+---
+title: "Calibration design: how should we spend 15 measurements?"
+author: "Calibration simulation series"
+format:
+  html:
+    toc: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+# The practical question
+
+In routine chemical analysis, calibration is often discussed as a question of how many levels are required. That is a necessary question, but it is not the only one. If the total number of measurements is fixed, the analyst must also decide whether those measurements should be used to cover more concentrations or to replicate fewer concentrations more carefully.
+
+In this first episode we use a deliberately friendly calibration problem. The response is linear, the absolute measurement error is constant across the range, and ordinary least squares is the correct model. That simplicity is useful because it lets us focus on the design question without mixing it with weighting, curvature, or LOQ effects.
+
+We compare three ways of spending 15 calibration measurements: 15 levels measured once, five levels measured in triplicate, and three levels measured five times. Each design has the same measurement budget, but the information content is different.
+
+# Setup
+
+```{r}
+#| label: resources
+
+library(here)
+library(data.table)
+library(ggplot2)
+library(knitr)
+
+source(here("R", "design_functions.R"))
+source(here("R", "weight_functions.R"))
+source(here("R", "fit_functions.R"))
+source(here("R", "inversion_functions.R"))
+source(here("R", "metrics_functions.R"))
+source(here("R", "plotting_functions.R"))
+source(here("R", "prediction_functions.R"))
+source(here("R", "response_functions.R"))
+source(here("R", "simulation_functions.R"))
+source(here("R", "variance_functions.R"))
+```
+
+```{r}
+#| label: setup
+
+set.seed(123)
+
+mean_fun <- f_linear
+sigma_fun <- sigma_homo
+
+designs <- list(
+  "15 x 1" = design_15x1(1, 100),
+  "5 x 3" = design_5x3(1, 100),
+  "3 x 5" = design_3x5(1, 100)
+)
+```
+
+# What the designs contain
+
+```{r}
+#| label: design-summary
+
+design_summary <- rbindlist(
+  lapply(
+    names(designs),
+    function(name) {
+      dt <- designs[[name]]
+      data.table(
+        design = name,
+        measurements = nrow(dt),
+        concentration_levels = uniqueN(dt$x),
+        replicates_per_level = paste(sort(unique(as.integer(table(dt$x)))), collapse = ", ")
+      )
+    }
+  )
+)
+
+kable(
+  design_summary,
+  digits = 2,
+  caption = "All designs use 15 total measurements, but they spend them differently."
+)
+```
+
+```{r}
+#| label: design-plot
+#| fig-cap: "The same measurement budget can be spent on many levels or on replicated levels."
+
+design_plot_data <- rbindlist(
+  lapply(
+    names(designs),
+    function(name) {
+      dt <- copy(designs[[name]])
+      dt[, design := name]
+      dt
+    }
+  )
+)
+
+plot_design_comparison(design_plot_data)
+```
+
+The design with 15 levels gives many positions along the calibration curve. The replicated designs give fewer positions, but they say more about repeatability at those selected concentrations. Neither choice is automatically superior; each one answers a slightly different analytical question.
+
+# Simulate and fit one calibration experiment
+
+```{r}
+#| label: calibration-data
+
+calibration_data <- lapply(
+  designs,
+  simulate_dataset,
+  mean_fun = mean_fun,
+  variance_fun = sigma_fun
+)
+
+models <- lapply(
+  calibration_data,
+  fit_ols
+)
+```
+
+```{r}
+#| label: calibration-plots
+#| fig-cap: "One simulated calibration for each design. The line is the true response."
+
+for (title in names(calibration_data)) {
+  print(
+    plot_design(calibration_data[[title]], mean_fun) +
+      labs(title = paste0("Design ", title))
+  )
+}
+```
+
+In this scenario OLS is appropriate because the response standard deviation is constant. This matters: OLS is not being used because it is the default button in software, but because its assumptions match the simulated measurement process.
+
+# Test the calibration on unknown samples
+
+A calibration curve is useful only when it predicts unknown samples. We therefore simulate future samples, invert the fitted calibration model, and compare the estimated concentration with the known simulated truth.
+
+```{r}
+#| label: predictions
+
+test_data <- generate_test_set(
+  n = 1000,
+  xmin = 1,
+  xmax = 100,
+  mean_fun = mean_fun,
+  variance_fun = sigma_fun
+)
+
+prediction_tables <- lapply(
+  models,
+  predict_calibration_model,
+  test_data = test_data,
+  variance_fun = sigma_fun
+)
+```
+
+```{r}
+#| label: performance-table
+
+performance_table <- data.table(
+  design = names(prediction_tables),
+  rmse = sapply(prediction_tables, metric_rmse),
+  mean_absolute_error = sapply(prediction_tables, metric_mae),
+  bias = sapply(prediction_tables, metric_bias),
+  coverage = sapply(prediction_tables, metric_coverage),
+  mean_interval_width = sapply(prediction_tables, metric_mean_pi_width)
+)
+
+kable(
+  performance_table,
+  digits = 3,
+  caption = "Prediction performance for one simulated calibration experiment."
+)
+```
+
+The exact ranking changes from simulation to simulation, so this table should not be read as a universal league table. The important point is that, under a truly linear response with constant absolute error, the 15-level design often performs well because it estimates the slope and intercept using information spread across the full range. Replicates improve information about repeatability, but they do not add as much new information about the line shape when the line is already simple.
+
+```{r}
+#| label: error-profiles
+#| fig-cap: "Relative concentration error across the calibration range."
+
+for (title in names(prediction_tables)) {
+  print(
+    plot_prediction_error(prediction_tables[[title]]) +
+      labs(title = paste0("Design ", title))
+  )
+}
+```
+
+The plots show relative error because that is usually closer to how analytical chemists evaluate performance. The same absolute concentration error is much more important near the low end of the range than near the high end. Even in this friendly OLS case, the low range deserves careful interpretation.
+
+# Take-home message
+
+This first simulation does not prove that 15 unreplicated levels are always best. It shows something more practical: a calibration design is an experimental design choice. With the same 15 measurements, we can learn more about curve shape or more about repeatability, but not both equally well.
+
+If the main question is the slope over a wide range, many levels help. If the main question is repeatability, replicates help. If the main question is linearity, the placement and number of levels become critical.
