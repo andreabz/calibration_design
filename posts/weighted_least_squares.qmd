@@ -1,5 +1,5 @@
 ---
-title: "Weighted least squares: fixing the wrong problem?"
+title: "When variability changes: introducing weighted least squares"
 author: "Calibration simulation series"
 format:
   html:
@@ -10,59 +10,136 @@ execute:
   message: false
 ---
 
-# Weighted least squares: fixing the wrong problem?
+# When variability changes: introducing weighted least squares
 
-In the previous post we introduced a common problem in analytical calibration:
+In the previous episode we compared different ways of distributing a fixed number of calibration measurements.
 
-**the variability of measurements may change across the calibration range.**
+We assumed an ideal situation:
 
-A linear calibration can still look correct.
+- the response was perfectly linear
+- every concentration had the same absolute variability
+- ordinary least squares provided an appropriate model
 
-But the uncertainty associated with low and high concentrations can be very different.
+Under these conditions, spreading measurements across the calibration range worked well.
 
----
+But real analytical methods are often different.
 
-# The next step
+Many instrumental responses show approximately constant **relative precision** across the working range.
 
-If variability changes with concentration:
+This means that the relative standard deviation (RSD) remains similar,
+while the absolute variability increases with concentration.
 
-Should we still use ordinary least squares?
+# From constant variance to constant RSD
 
-Ordinary least squares gives the same importance to every point.
+A constant RSD means: $\text{RSD} = \frac{\sigma}{x}$ remains approximately constant.
 
-But a point with high uncertainty should probably contribute less than a highly precise point.
+Therefore $\sigma$ increases as concentration increases.
 
-This is the idea behind **weighted least squares (WLS).**
+A high concentration standard may show much larger absolute scatter than a low concentration standard.
 
----
+This is not necessarily a problem.
 
-# The hidden challenge
+It is simply a different variance structure.
 
-Weighted regression requires weights.
+The question is:
 
-But where do these weights come from?
+**Should all calibration points contribute equally to the regression?**
 
-Common choices include:
+# The limitation of ordinary least squares
 
-- experimentally estimated weights
-- \(1/x\)
-- \(1/x^2\)
+Ordinary least squares (OLS) estimates the calibration line by minimising the sum of squared residuals.
 
-Only the first option is statistically sound, the other two are common in analytical chemistry as they model common response uncertainty patterns.
+Every point receives the same importance.
 
-Are they equivalent?
+This works well when all measurements have the same variance.
 
-Let's simulate the problem.
+However, with constant RSD:
+
+- low concentration points have smaller absolute uncertainty
+- high concentration points have larger absolute uncertainty
+
+Treating them equally may not be the most efficient choice.
+
+A deviation of 5 response units at low concentration may represent a large relative error.
+
+The same deviation at high concentration may be much less important.
+
+# Weighted least squares
+
+Weighted least squares (WLS) modifies the regression.
+
+Instead of giving every observation the same influence, each point receives a weight.
+
+The general principle is:
+
+$$
+w_i=\frac{1}{\sigma_i^2}
+$$
+
+where:
+
+- $w_i$ is the weight
+- $\sigma_i$ is the expected standard deviation
+
+Points with lower uncertainty receive higher weight.
+
+The difficulty is that in a real calibration we usually do not know the true variance.
+
+Therefore:
+
+**how should we choose the weights?**
+
+# Different ways to choose weights
+
+In this simulation we compare different strategies.
+
+## True variance
+
+Because we generated the data ourselves, we know the variance model.
+
+This allows us to calculate the theoretical optimal weights.
+
+This is not available in routine analysis, but it provides a useful reference.
+
+## Empirical variance estimation
+
+In practice, replicate measurements can be used to estimate variability.
+
+The estimated standard deviation can then be converted into weights.
+
+This approach is closer to a real laboratory workflow.
+
+## Common analytical approximations
+
+When the exact variance structure is unknown, simple weighting schemes are often used.
+
+Two common choices are:
+
+$$
+w=\frac{1}{x}
+$$
+
+and:
+
+$$
+w=\frac{1}{x^2}
+$$
+
+These assume a specific relationship between concentration and variability.
+
+The question is not only whether WLS improves the fit.
+
+The important question is:
+
+**how does the weighting strategy affect the final analytical result?**
 
 # Simulation setup
 
-We use the same heteroscedastic linear system from the previous episode.
+We keep the same experimental question as episode 1.
 
-The response is linear.
+We have 15 measurements available.
 
-The variance increases with concentration.
-
-The only difference is the regression model.
+How should we distribute them?
 
 ```{r}
 #| label: resources
@@ -70,14 +147,15 @@ library(here)
 library(data.table)
 library(ggplot2)
 
-source(here("R", "response_functions.R"))
-source(here("R", "variance_functions.R"))
 source(here("R", "design_functions.R"))
-source(here("R", "simulation_functions.R"))
 source(here("R", "fit_functions.R"))
-source(here("R", "prediction_functions.R"))
+source(here("R", "inversion_functions.R"))
 source(here("R", "metrics_functions.R"))
 source(here("R", "plotting_functions.R"))
+source(here("R", "prediction_functions.R"))
+source(here("R", "response_functions.R"))
+source(here("R", "simulation_functions.R"))
+source(here("R", "variance_functions.R"))
 source(here("R", "weight_functions.R"))
 ```
 
@@ -106,8 +184,6 @@ designs <- list(
 
 ## Simulate calibration data
 
-Let's use the data from the previous episode:
-
 ```{r}
 #| label: calibration_data
 calibration_data <- lapply(
@@ -122,22 +198,33 @@ calibration_data <- lapply(
 
   }
 )
-
-plot_design(
-  calibration_data[["15 x 1"]],
-  mean_fun
-)
 ```
+
+```{r}
+#| label: show_calibration
+
+for (title in names(calibration_data)) {
+  i <- calibration_data[[title]]
+  print(
+    plot_design(i, mean_fun) +
+      labs(title = paste0("Design ", title))
+  )
+}
+```
+
+The scatter increases with concentration.
+
+The relative variability remains approximately constant.
 
 ## Fit different regression models
 
-We compare:
+For each design we compare:
 
-- ordinary least squares
-- WLS with experimentally estimated weights
-- WLS with \[1/x\]
-- WLS with \[1/x^2\]
-- ideal WLS using the true variance (simulation benchmark)
+- OLS
+- WLS using the true variance
+- WLS using empirical variance
+- WLS using $1/x$
+- WLS using $1/x^2$
 
 
 ```{r}
@@ -147,41 +234,33 @@ models <- lapply(
   function(dt) {
 
     list(
-
       "OLS" = fit_ols(dt),
-
+      "WLS true" = fit_wls_true(dt),
       "WLS estimated" = fit_wls_empirical(dt),
-
       "WLS 1/x" = fit_wls_x(dt),
-
-      "WLS 1/x2" = fit_wls_x2(dt),
-
-      "WLS true" = fit_wls_true(dt)
-
+      "WLS 1/x2" = fit_wls_x2(dt)
     )
 
   }
 )
 ```
 
-## Generate new samples
+# Testing unknown samples
 
-A calibration model should predict unknown samples.
+The final goal is still the same: predict unknown concentrations.
 
 ```{r}
 #| label: test_models
 test_data <- generate_test_set(
   n = 1000,
-  xmin = 0,
+  xmin = 1,
   xmax = 100,
   mean_fun = mean_fun,
   variance_fun = variance_fun
 )
 ```
 
-## Prediction performance
-
-Convert model output into a common format.
+# Convert signals into concentrations
 
 ```{r}
 #| label: prediction_summary
@@ -224,76 +303,32 @@ rmse_results <- rbindlist(
 rmse_results
 ```
 
-The result is a single number, but it hides where the model performs poorly.
-
-Let's look at the full profile.
-
 
 ```{r}
 #| label: fig_prediction_error
-plot_prediction_error(
-  prediction_tables[["5 x 3"]][["OLS"]]
-)
+for(design in names(prediction_tables)){
 
-plot_prediction_error(
-  prediction_tables[["5 x 3"]][["WLS estimated"]]
-)
+  for(model in names(prediction_tables[[design]])){
 
-plot_prediction_error(
-  prediction_tables[["5 x 3"]][["WLS 1/x"]]
-)
-
-plot_prediction_error(
-  prediction_tables[["5 x 3"]][["WLS 1/x2"]]
-)
-
-plot_prediction_error(
-  prediction_tables[["5 x 3"]][["WLS true"]]
-)
-
-plot_prediction_error(
-  prediction_tables[["3 x 5"]][["OLS"]]
-)
-
-plot_prediction_error(
-  prediction_tables[["3 x 5"]][["WLS estimated"]]
-)
-
-plot_prediction_error(
-  prediction_tables[["3 x 5"]][["WLS 1/x"]]
-)
-
-plot_prediction_error(
-  prediction_tables[["3 x 5"]][["WLS 1/x2"]]
-)
-
-plot_prediction_error(
-  prediction_tables[["3 x 5"]][["WLS true"]]
-)
+  print(
+    plot_prediction_error(
+      prediction_tables[[design]][[model]]
+    ) +
+    labs(title = paste(design, model))
+    )
+  }
+}
 ```
 
-## Prediction uncertainty
+# Prediction interval coverage
 
-Accuracy is not the only objective.
+A good calibration should also estimate uncertainty correctly.
 
-A calibration model should also estimate uncertainty correctly.
-
-```{r}
-#| label: prediction_uncertainty
-pi_width_results <- summarise_metrics(
-  prediction_tables,
-  metric_mean_pi_width
-)
-
-pi_width_results
-```
-
-## Coverage of prediction intervals
-
-A 95% prediction interval should contain the true value approximately 95% of the time.
+For a 95% prediction interval we expect approximately 95% coverage.
 
 ```{r}
-#| label: prediction_coverage
+#| label: coverage
+
 coverage_results <- summarise_metrics(
   prediction_tables,
   metric_coverage
@@ -302,28 +337,49 @@ coverage_results <- summarise_metrics(
 coverage_results
 ```
 
-## Comparing the residual structure
+---
+
+# Interval width
+
+Coverage alone is not sufficient.
+
+Intervals should be reliable but not unnecessarily wide.
 
 ```{r}
-ggplot(
-  rmse_results,
-  aes(
-    x = model,
-    y = rmse
-  )
-) +
-geom_col() +
-facet_wrap(~design)
+#| label: width
+
+width_results <- summarise_metrics(
+  prediction_tables,
+  metric_mean_pi_width
+)
+
+width_results
 ```
 
-## Conclusions
+---
 
-Weighted least squares can improve calibration when variability changes with concentration, but the choice of weights matters.
+# Conclusions
 
-Using \[1/x^2\] is common, but it assumes a constant relative standard deviation (RSD) across the entire calibration range.
+When variability changes with concentration, the assumption behind OLS is no longer satisfied.
 
-The real question is: do our weights describe the actual analytical uncertainty?
+Weighted least squares can improve calibration by accounting for different uncertainty levels across the range.
 
-## Next
+However, the weighting strategy matters.
 
-In the next episode we will test a more realistic situation: what if the RSD increases moving towards the limit of quantification (LoQ)?
+Using the true variance gives the best possible benchmark, but it is not available in routine work.
+
+Empirical weighting requires enough information to estimate variability.
+
+Simple approaches such as $1/x$ or $1/x^2$ are convenient, but they rely on assumptions.
+
+The important question is therefore not:
+
+"Should we always use WLS?"
+
+but:
+
+"How well does the chosen weighting model describe the real variance structure?"
+
+# Next
+
+In the next episode we will explore this question by comparing weighting strategies under more realistic variance models.
