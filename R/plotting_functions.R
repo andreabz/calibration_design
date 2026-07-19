@@ -157,7 +157,7 @@ plot_prediction_interval_coverage <- function(
       linetype = 2
     ) +
     coord_cartesian(
-      ylim = c(0, 1)
+      ylim = c(0.80, 1.20)
     ) +
     labs(
       x = "Concentration",
