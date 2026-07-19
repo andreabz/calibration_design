@@ -53,3 +53,57 @@ sigma_loq_mixed <- function(
     )
   )
 }
+
+#' Constant-RSD standard deviation for the linear examples
+#'
+#' @param x Numeric vector of concentrations.
+#' @param rsd Relative standard deviation as a fraction.
+#'
+#' @return Numeric vector of response standard deviations.
+sigma_linear_constant_rsd <- function(
+  x,
+  rsd = 0.10
+) {
+  sigma_constant_rsd(
+    x,
+    mean_fun = f_linear,
+    rsd = rsd
+  )
+}
+
+#' Mixed low-end variance pattern for the linear examples
+#'
+#' @param x Numeric vector of concentrations.
+#' @param sigma_floor Low-concentration absolute standard-deviation floor.
+#' @param rsd High-concentration relative standard deviation.
+#'
+#' @return Numeric vector of response standard deviations.
+sigma_linear_loq_mixed <- function(
+  x,
+  sigma_floor = 4,
+  rsd = 0.07
+) {
+  sigma_loq_mixed(
+    x,
+    mean_fun = f_linear,
+    sigma_floor = sigma_floor,
+    rsd = rsd
+  )
+}
+
+#' Constant-RSD standard deviation for the mild-curvature example
+#'
+#' @param x Numeric vector of concentrations.
+#' @param rsd Relative standard deviation as a fraction.
+#'
+#' @return Numeric vector of response standard deviations.
+sigma_mild_downward_curvature_rsd <- function(
+  x,
+  rsd = 0.08
+) {
+  sigma_constant_rsd(
+    x,
+    mean_fun = f_mild_downward_curvature,
+    rsd = rsd
+  )
+}

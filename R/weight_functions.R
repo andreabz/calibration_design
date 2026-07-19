@@ -17,3 +17,12 @@ weights_x <- function(x) {
 weights_x2 <- function(x) {
   1 / pmax(x, 1e-6)^2
 }
+
+#' Calculate inverse-variance weights from simulated response SDs
+#'
+#' @param dt Simulated dataset containing a `sigma` column.
+#'
+#' @return Numeric vector of inverse-variance weights.
+weights_from_simulated_sigma <- function(dt) {
+  1 / dt$sigma^2
+}

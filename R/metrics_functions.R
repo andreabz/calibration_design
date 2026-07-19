@@ -79,6 +79,31 @@ metric_hetero_detected <- function(
   test$p.value < alpha
 }
 
+#' Test a linear calibration model for quadratic curvature
+#'
+#' @param dt Calibration data with columns `x` and `y`.
+#' @param weights Optional non-negative regression weights.
+#' @param alpha Significance level for the nested-model comparison.
+#'
+#' @return `TRUE` when adding a quadratic term gives a p-value below `alpha`.
+metric_curvature_detected <- function(
+  dt,
+  weights = NULL,
+  alpha = 0.05
+) {
+  if (is.null(weights)) {
+    linear_model <- lm(y ~ x, data = dt)
+    quadratic_model <- lm(y ~ x + I(x^2), data = dt)
+  } else {
+    linear_model <- lm(y ~ x, data = dt, weights = weights)
+    quadratic_model <- lm(y ~ x + I(x^2), data = dt, weights = weights)
+  }
+
+  p_value <- anova(linear_model, quadratic_model)$`Pr(>F)`[2]
+
+  isTRUE(p_value < alpha)
+}
+
 #' Summarise a metric across designs and models
 #'
 #' @param prediction_tables Nested list of prediction tables by design and model.

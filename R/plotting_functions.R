@@ -122,6 +122,50 @@ plot_prediction_error <- function(pred_table) {
     theme_bw()
 }
 
+#' Plot empirical prediction-interval coverage by concentration
+#'
+#' @param pred_table Prediction table returned by `predict_calibration_model()`.
+#' @param n_bins Number of equally spaced concentration bins used to estimate
+#'   local coverage.
+#' @param nominal_coverage Target coverage probability of the interval.
+#'
+#' @return A `ggplot` object showing the fraction of true concentrations inside
+#'   their prediction intervals in each concentration bin.
+plot_prediction_interval_coverage <- function(
+  pred_table,
+  n_bins = 10,
+  nominal_coverage = 0.95
+) {
+  profile <- summarise_prediction_profile(
+    pred_table,
+    n_bins = n_bins
+  )
+
+  ggplot(
+    profile,
+    aes(
+      x = mean_true,
+      y = coverage
+    )
+  ) +
+    geom_point(
+      size = 2
+    ) +
+    geom_line() +
+    geom_hline(
+      yintercept = nominal_coverage,
+      linetype = 2
+    ) +
+    coord_cartesian(
+      ylim = c(0, 1)
+    ) +
+    labs(
+      x = "Concentration",
+      y = "Interval coverage"
+    ) +
+    theme_bw()
+}
+
 #' Plot the location of calibration measurements by design
 #'
 #' @param dt Dataset with columns `x` and `design`.

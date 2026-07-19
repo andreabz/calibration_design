@@ -44,3 +44,16 @@ f_saturation_quadratic <- function(
 ) {
   slope * x - curvature * x^2
 }
+
+#' Mild downward-curved response used in the linearity example
+#'
+#' @param x Numeric vector of concentrations.
+#'
+#' @return Numeric vector of expected responses with a small downward bend.
+f_mild_downward_curvature <- function(x) {
+  f_saturation_quadratic(
+    x,
+    slope = 1,
+    curvature = 0.0010
+  )
+}
