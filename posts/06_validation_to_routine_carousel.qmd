@@ -10,8 +10,10 @@ format:
       - paperheight=10in
       - margin=0.75in
     fontsize: 18pt
-    fontfamily: tgheros
+    fontfamily: sans
     toc: false
+header-includes:
+  - \renewcommand{\familydefault}{\sfdefault}
 execute:
   echo: false
 ---
