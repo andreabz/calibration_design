@@ -33,7 +33,7 @@ jobs:
         uses: quarto-dev/quarto-actions/setup@v2
 
       - name: Set up TinyTex
-        uses: r-lib/actions/setup-tinytex
+        uses: r-lib/actions/setup-tinytex@v2
 
       - name: Render and Publish
         uses: quarto-dev/quarto-actions/publish@v2
