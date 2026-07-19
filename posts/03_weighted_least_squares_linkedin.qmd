@@ -14,10 +14,14 @@ In my simulation, 1/x² behaved well when the data really had constant RSD. That
 
 The important part is the word “when”.
 
-Using 1/x² because it is familiar is not the same as showing that the method has that variance structure. Empirical weights can help, but only if the calibration design includes enough replicated levels to estimate variance.
+Using 1/x² because it is familiar is not the same as showing that the method has that variance structure. Empirical weights can help, but only if the calibration design includes enough replicated levels to estimate variance. In this simulation, 3 levels measured 5 times is a sensible routine design because it gives repeatability information at low, middle, and high concentration.
+
+WLS is useful only when its weights describe the method's real variability. The advantage of replicated levels is simple: they let us estimate and check that variability rather than taking a familiar weighting rule on faith.
 
 This is where design and statistics meet. If we want to estimate precision from calibration data, we need replicates. If we want to describe curve shape, we need levels.
 
 Same injections. Different information.
 
 #AnalyticalChemistry #Chemometrics #RStats #WeightedLeastSquares
+
+![Relative weighting curves under constant RSD: inverse variance and 1/x² have the same shape.](figures/03_weighted_least_squares.png)

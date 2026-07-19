@@ -3,18 +3,19 @@ title: "Calibration Design Simulations"
 format: html
 ---
 
-This repository explores calibration design choices for chemical analysis using small, reproducible R simulations.
+This repository explores calibration design choices for chemical analysis using small, reproducible R simulations. It follows one practical question from validation to routine work: **how should we invest a limited number of calibration points?**
 
 The examples are written for analytical chemists, R users, and chemometricians who want to reason about calibration beyond the fitted line. The central question is how a fixed calibration budget should be distributed when the analyst cares about prediction error, uncertainty, weighting, low-level behavior, and evidence of linearity.
 
 ## Source articles
 
-1. [Calibration design: how should we spend 15 measurements?](scripts/01_point_distribution.qmd)
-2. [Calibration curves are not only about linearity](scripts/02_heteroscedasticity.qmd)
-3. [When variability changes: introducing weighted least squares](scripts/03_weighted_least_squares.qmd)
-4. [When the weighting model is only partly true](scripts/04_loq_weight_mismatch.qmd)
-5. [Can calibration designs detect small downward non-linearity equally well?](scripts/05_nonlinearity_detection.qmd)
+1. [Calibration design: how should we spend 15 measurements?](scripts/01_point_distribution.qmd) — start with linear response and constant absolute error.
+2. [Calibration curves are not only about linearity](scripts/02_heteroscedasticity.qmd) — introduce linear response with changing variance.
+3. [When variability changes: introducing weighted least squares](scripts/03_weighted_least_squares.qmd) — make the variance assumption behind weights explicit.
+4. [When the weighting model is only partly true](scripts/04_loq_weight_mismatch.qmd) — inspect low-end error and prediction-interval coverage.
+5. [Can calibration designs detect small downward non-linearity equally well?](scripts/05_nonlinearity_detection.qmd) — distinguish screening for curvature from proving linearity.
+6. [From validation to routine calibration: where should we invest our points?](scripts/06_validation_to_routine.qmd) — turn the evidence into a validation and QC workflow.
 
 ## LinkedIn drafts
 
-Short copy-paste drafts are stored separately in [`posts/`](posts/) so the computational articles and social posts can evolve independently.
+Short copy-paste drafts are stored separately in [`posts/`](posts/) so the computational articles and social posts can evolve independently. The final post is also available as a PDF carousel source: [How should I invest my calibration points?](posts/06_validation_to_routine_carousel.qmd).

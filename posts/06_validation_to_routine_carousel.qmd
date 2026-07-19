@@ -1,0 +1,114 @@
+---
+title: "How should I invest my calibration points?"
+subtitle: "A validation-to-routine calibration workflow"
+author: "Calibration simulation series"
+format:
+  pdf:
+    title-block: false
+    geometry:
+      - paperwidth=10in
+      - paperheight=10in
+      - margin=0.75in
+    fontsize: 18pt
+    toc: false
+execute:
+  echo: false
+---
+
+# Slide 1 — The question
+
+## How should I invest my calibration points?
+
+The answer depends on what we are trying to learn.
+
+**Validation learns the method. Routine calibration checks that the validated method still works.**
+
+\newpage
+
+# Slide 2 — Same budget, different information
+
+With 15 measurements, we can choose:
+
+- **15 x 1:** more information about response shape;
+- **5 x 3:** a balance of levels and repeatability;
+- **3 x 5:** precise repeatability estimates at low, middle, and high levels.
+
+No arrangement is best for every question.
+
+\newpage
+
+# Slide 3 — First establish the mean response
+
+Linearity is not established by a high R² or a nice-looking line.
+
+During validation, use **many distributed concentration levels** to look for
+curvature, saturation, and regional lack of fit. Add replication so that normal
+scatter is not confused with a change in the mean response.
+
+\newpage
+
+# Slide 4 — Then establish the variance structure
+
+A linear response can have non-constant variance.
+
+Replicates reveal whether error is approximately:
+
+- constant in absolute units;
+- constant in relative terms; or
+- mixed, with a low-level noise floor.
+
+Weights are not a convention. They are a model of that variance.
+
+\newpage
+
+# Slide 5 — Use WLS only when its weights are credible
+
+WLS gives more influence to measurements that are expected to be more precise.
+
+It is useful only when the weights describe the method's real variability. The
+variance pattern must therefore be estimated, checked, and monitored—not chosen
+because a familiar formula looks convenient.
+
+\newpage
+
+# Slide 6 — A practical routine design
+
+After a linear mean and variance structure have been validated:
+
+## Use 3 x 5 with WLS estimated from replicate data
+
+It is compact and auditable:
+
+- low, middle, and high standards check the range;
+- five replicates estimate local variability;
+- data-estimated weights are preferable to a habitual 1/x² rule.
+
+\newpage
+
+# Slide 7 — QC is the final check
+
+Use independent QCs at relevant low, middle, and high concentrations.
+
+Track:
+
+- bias and relative prediction error;
+- prediction-interval width; and
+- **coverage**: does a nominal 95% interval contain about 95% of true QC concentrations?
+
+If variance or QC prediction changes, investigate; do not silently retain the
+old weight rule.
+
+\newpage
+
+# Slide 8 — The answer
+
+## Invest broadly first, then monitor intelligently.
+
+**Validation:** many concentration levels + replication to define linearity and variance.
+
+**Routine:** 3 x 5 + data-estimated WLS + QC checks across the range.
+
+This is how the calibration design, the statistical model, and the analytical
+decision all support the same workflow.
+
+#AnalyticalChemistry #Chemometrics #Calibration #WeightedLeastSquares

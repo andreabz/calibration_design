@@ -21,3 +21,5 @@ It is also: “are all calibration points equally precise?”
 If the answer is no, weighted least squares may be more appropriate, but only if the weights reflect the real variance pattern.
 
 #AnalyticalChemistry #Chemometrics #Calibration #RStats
+
+![Absolute response standard deviation increases with concentration under constant relative error.](figures/02_heteroscedasticity.png)

@@ -2,7 +2,9 @@
 title: "LinkedIn post 01 - Calibration design"
 ---
 
-Calibration is not only a question of how many standards we prepare. It is also a question of what we want those standards to teach us.
+How should we invest 15 calibration measurements?
+
+Calibration is not only a question of how many standards we prepare. It is a question of what we need those standards to teach us.
 
 I simulated a simple case: linear response, constant absolute measurement error, and 15 total calibration measurements. Then I compared three designs:
 
@@ -16,8 +18,10 @@ The 15-level design gives more information about the shape of the calibration li
 
 This is the point I would like more analysts to discuss before running the experiment: are we trying to estimate a slope, estimate repeatability, check linearity, or support uncertainty around unknown samples?
 
-A calibration design is not just a regulatory checkbox. It is an experimental design choice.
+A calibration design is not just a regulatory checkbox. It is an experimental-design choice.
 
 In the next step I looked at what happens when the response remains linear, but the variance is no longer constant. That is where the usual OLS calibration starts to become less comfortable.
 
 #AnalyticalChemistry #Chemometrics #RStats #Calibration
+
+![One budget, three calibration designs: 15 x 1, 5 x 3, and 3 x 5.](figures/01_calibration_design.png)
