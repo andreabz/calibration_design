@@ -11,6 +11,7 @@ The instinct is often to look for a single "best" calibration design.
 In reality, the answer depends on what you're trying to learn.
 
 During method validation, the goal is understanding the method itself:
+
 ✔️ Is the response truly linear?
 ✔️ Is there curvature or local lack of fit?
 ✔️ How does measurement variance change across the range?
