@@ -45,35 +45,8 @@ source(here("R", "variance_functions.R"))
 
 set.seed(456)
 
-mean_fun <- function(x) {
-  f_saturation_quadratic(
-    x,
-    slope = 1,
-    curvature = 0.0010
-  )
-}
-
-sigma_relative <- function(x) {
-  sigma_constant_rsd(
-    x,
-    mean_fun = mean_fun,
-    rsd = 0.08
-  )
-}
-
-curvature_detected <- function(dt, weights = NULL, alpha = 0.05) {
-  if (is.null(weights)) {
-    m_linear <- lm(y ~ x, data = dt)
-    m_quad <- lm(y ~ x + I(x^2), data = dt)
-  } else {
-    m_linear <- lm(y ~ x, data = dt, weights = weights)
-    m_quad <- lm(y ~ x + I(x^2), data = dt, weights = weights)
-  }
-
-  p_value <- anova(m_linear, m_quad)$`Pr(>F)`[2]
-
-  isTRUE(p_value < alpha)
-}
+mean_fun <- f_mild_downward_curvature
+sigma_relative <- sigma_mild_downward_curvature_rsd
 
 designs <- list(
   "15 x 1" = design_15x1(1, 100),
@@ -142,40 +115,6 @@ For each simulated calibration, we compare a linear model with a quadratic model
 
 n_sim <- 500
 
-simulate_detection <- function(design_name, design_fun, error_case) {
-  detections <- replicate(
-    n_sim,
-    {
-      if (error_case == "Constant absolute error") {
-        dt <- simulate_dataset(
-          design_fun(1, 100),
-          mean_fun,
-          sigma_homo
-        )
-
-        curvature_detected(dt)
-      } else {
-        dt <- simulate_dataset(
-          design_fun(1, 100),
-          mean_fun,
-          sigma_relative
-        )
-
-        curvature_detected(
-          dt,
-          weights = 1 / dt$sigma^2
-        )
-      }
-    }
-  )
-
-  data.table(
-    design = design_name,
-    error_case = error_case,
-    detection_rate = mean(detections)
-  )
-}
-
 design_functions <- list(
   "15 x 1" = design_15x1,
   "5 x 3" = design_5x3,
@@ -183,24 +122,20 @@ design_functions <- list(
 )
 
 detection_results <- rbindlist(
-  lapply(
-    names(design_functions),
-    function(name) {
-      rbindlist(
-        list(
-          simulate_detection(
-            name,
-            design_functions[[name]],
-            "Constant absolute error"
-          ),
-          simulate_detection(
-            name,
-            design_functions[[name]],
-            "Constant relative error"
-          )
-        )
-      )
-    }
+  list(
+    simulate_curvature_detection_power(
+      design_functions = design_functions,
+      mean_fun = mean_fun,
+      variance_fun = sigma_homo,
+      n_sim = n_sim
+    )[, error_case := "Constant absolute error"],
+    simulate_curvature_detection_power(
+      design_functions = design_functions,
+      mean_fun = mean_fun,
+      variance_fun = sigma_relative,
+      n_sim = n_sim,
+      weights_fun = weights_from_simulated_sigma
+    )[, error_case := "Constant relative error"]
   )
 )
 
@@ -213,7 +148,7 @@ kable(
 
 ```{r}
 #| label: detection-plot
-#| fig-cap: "Detection probability depends on the design and on the error structure."
+#| fig-cap: "None of the 15-measurement designs reaches 95% power to detect this deliberately mild curvature."
 
 ggplot(
   detection_results,
@@ -231,6 +166,10 @@ ggplot(
     yintercept = 0.05,
     linetype = 2
   ) +
+  geom_hline(
+    yintercept = 0.95,
+    linetype = 3
+  ) +
   scale_y_continuous(
     limits = c(0, 1)
   ) +
@@ -242,14 +181,37 @@ ggplot(
   theme_bw()
 ```
 
-The dashed line marks the rejection rate expected under the null hypothesis (5%). Detection rates above that line reflect the statistical power of the design to detect the downward curvature.
+The dashed line at 5% is the false-positive rate: even a truly linear response
+will occasionally be labelled curved. It is **not** a target for detection. The
+dotted line at 95% is a useful target for reliable detection. The bars show the
+power of each design: the chance that it identifies the curvature when the
+curvature is really present.
 
 # Interpretation
 
-The designs are not equally informative about shape. The 15-level design sees the curve at many positions and is therefore better suited to detecting gradual curvature. The five-level design has fewer positions but still gives some view of the bend. The three-level design can estimate repeatability at selected points, but it has limited information about what happens between them.
+For this deliberately *slight* curvature, **none of the 15-measurement designs
+reaches 95% power**. Exact detection rates vary somewhat with the error
+pattern, but all three are far below the level needed for reliable detection.
+All three can occasionally find the bend, but none can reliably identify it.
+Therefore, this simulation does not select one of the three as a
+linearity-validation design. A non-significant curvature test should not be
+read as proof that the response is linear.
 
-This is the central trade-off. Replicates improve precision estimates, but they do not create new concentration levels. If the analytical question is linearity, the number and placement of levels are critical.
+Does that make curvature unimportant when prediction error is still suitable?
+Not necessarily. The decision should be based on intended use. If bias,
+prediction error, and interval coverage all meet predefined acceptance criteria
+over the reportable range, a small bend may be operationally acceptable for
+that range. It still matters because the bias can grow at the high end, the
+response may change with time or matrix, and a linear model can become unsafe
+outside the conditions that were checked. The goal of validation is therefore
+not to detect every mathematically non-zero curve; it is to show that the
+chosen model predicts well enough where analytical decisions are made.
+
+For validation, use more distributed concentration levels plus replication so
+that both shape and variance can be assessed against those acceptance criteria.
+Once that work supports a linear model, 3 x 5 is a good compact routine design
+for monitoring repeatability and variance at low, middle, and high levels.
 
 # Take-home message
 
-In chemical calibration, small non-linearity should usually be imagined as downward curvature or the beginning of saturation. A design built mainly around replication may be useful for precision, but it is not automatically strong for detecting that curvature. The calibration plan should state explicitly whether the priority is repeatability, weighting, low-level uncertainty, or evidence of linearity.
+In chemical calibration, small non-linearity should usually be imagined as downward curvature or the beginning of saturation. With only 15 measurements, none of these designs reliably detects the deliberately mild bend simulated here. Choose the model on prediction performance, bias, coverage, and the intended range—not on a non-significant curvature test alone. The final episode turns that principle into a validation and routine-calibration workflow.

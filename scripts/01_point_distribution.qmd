@@ -10,7 +10,7 @@ execute:
   message: false
 ---
 
-# The practical question
+# The practical question: how should we invest 15 calibration points?
 
 In routine chemical analysis, calibration is often discussed as a question of how many levels are required. That is a necessary question, but it is not the only one. If the total number of measurements is fixed, the analyst must also decide whether those measurements should be used to cover more concentrations or to replicate fewer concentrations more carefully.
 
@@ -157,6 +157,13 @@ prediction_tables <- lapply(
 )
 ```
 
+The prediction interval is the model's uncertainty range for the concentration
+of one future unknown sample. In this simulation it is a 95% interval: over
+many comparable unknown samples, about 95% of their true concentrations should
+fall inside it. Coverage checks whether that promise is being kept; interval
+width tells us how wide the promise is. A narrow interval is attractive only
+when its coverage is close to the nominal 95%.
+
 ```{r}
 #| label: performance-table
 
@@ -192,8 +199,22 @@ for (title in names(prediction_tables)) {
 
 The plots show relative error because that is usually closer to how analytical chemists evaluate performance. The same absolute concentration error is much more important near the low end of the range than near the high end. Even in this friendly OLS case, the low range deserves careful interpretation.
 
+```{r}
+#| label: interval-coverage
+#| fig-cap: "Empirical 95% prediction-interval coverage across the calibration range. The dashed line is the nominal 95% target."
+
+for (title in names(prediction_tables)) {
+  print(
+    plot_prediction_interval_coverage(prediction_tables[[title]]) +
+      labs(title = paste0("Design ", title))
+  )
+}
+```
+
+Because this is one finite simulation, coverage will not land exactly on 95% in every bin. The useful comparison is whether coverage is broadly near the target without obtaining unnecessarily wide intervals. Later episodes use this same check when the variance assumptions are more demanding.
+
 # Take-home message
 
 This first simulation does not prove that 15 unreplicated levels are always best. It shows something more practical: a calibration design is an experimental design choice. With the same 15 measurements, we can learn more about curve shape or more about repeatability, but not both equally well.
 
-If the main question is the slope over a wide range, many levels help. If the main question is repeatability, replicates help. If the main question is linearity, the placement and number of levels become critical.
+If the main question is the slope over a wide range, many levels help. If the main question is repeatability, replicates help. If the main question is linearity, the placement and number of levels become critical. This begins the series' central question: invest points in shape, in repeatability, or in both?

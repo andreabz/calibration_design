@@ -46,13 +46,7 @@ source(here("R", "variance_functions.R"))
 set.seed(123)
 
 mean_fun <- f_linear
-sigma_fun <- function(x) {
-  sigma_constant_rsd(
-    x,
-    mean_fun = mean_fun,
-    rsd = 0.10
-  )
-}
+sigma_fun <- sigma_linear_constant_rsd
 
 designs <- list(
   "15 x 1" = design_15x1(1, 100),

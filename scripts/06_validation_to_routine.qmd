@@ -1,0 +1,234 @@
+---
+title: "From validation to routine calibration: where should we invest our points?"
+author: "Calibration simulation series"
+format:
+  html:
+    toc: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+# One question, two phases
+
+The series began with a simple question: **how should we invest our calibration
+points?** The answer is not one design for every purpose. Validation and routine
+calibration need different information.
+
+During method validation, the laboratory is still learning whether the mean
+response is linear and how its variance changes across the range. That requires
+many well-spaced concentration levels and replication at each level. During
+routine calibration, those questions should already have been answered. The
+task changes to checking that the established model and variance structure
+remain suitable for the current analytical run.
+
+# The narrative across the six episodes
+
+```{r}
+#| label: resources
+
+library(here)
+library(data.table)
+library(ggplot2)
+library(knitr)
+
+source(here("R", "design_functions.R"))
+source(here("R", "weight_functions.R"))
+source(here("R", "fit_functions.R"))
+source(here("R", "inversion_functions.R"))
+source(here("R", "metrics_functions.R"))
+source(here("R", "plotting_functions.R"))
+source(here("R", "prediction_functions.R"))
+source(here("R", "response_functions.R"))
+source(here("R", "simulation_functions.R"))
+source(here("R", "variance_functions.R"))
+```
+
+```{r}
+#| label: narrative-table
+
+narrative <- data.table(
+  context = c(
+    "Linear response, constant absolute error",
+    "Linear response, constant relative error",
+    "Linear response, weights estimated from replicates",
+    "Low-end noise floor plus relative error",
+    "Slight downward curvature",
+    "Validated routine method"
+  ),
+  lesson = c(
+    "Spread points when the main aim is estimating the line.",
+    "A straight mean response can still have changing variance.",
+    "Weights are variance assumptions; replicates make them testable.",
+    "Assess accuracy and interval coverage by concentration region.",
+    "Few levels cannot establish that a subtle curve is absent.",
+    "Monitor the validated model, variance, and prediction performance."
+  )
+)
+
+kable(
+  narrative,
+  caption = "The same calibration-point budget answers different questions in different contexts."
+)
+```
+
+# Validation design: learn the response and variance structure
+
+A validation study should deliberately spend more than a routine calibration
+run. Here is an illustrative design with seven distributed concentrations and
+three independent replicates per level. It gives 21 measurements, not 15,
+because validation is an investment in evidence rather than a routine-run
+constraint. The concentration levels make curvature and regional departures
+visible; the replicates make within-level variance estimable.
+
+```{r}
+#| label: validation-design
+#| fig-cap: "Validation uses distributed levels and replication: enough positions to inspect shape, enough repeats to estimate variability."
+
+validation_design <- data.table(
+  x = rep(seq(1, 100, length.out = 7), each = 3),
+  design = "Validation: 7 x 3"
+)
+
+routine_design <- copy(design_3x5(1, 100))
+routine_design[, design := "Routine: 3 x 5"]
+
+plot_design_comparison(
+  rbindlist(list(validation_design, routine_design))
+)
+```
+
+The exact number and placement of levels should be justified by the reportable
+range, decision points, regulatory expectations, and prior method knowledge.
+The key principle is not the literal 7 x 3 recipe. It is to include enough
+levels to challenge linearity and enough replication to estimate the variance
+function, including at the low end where a noise floor may appear.
+
+# Routine design: monitor a model that has already been validated
+
+For a validated linear method, 3 x 5 is a pragmatic routine design. Low,
+middle, and high standards give a check across the reportable range, while five
+replicates at each level allow an empirical estimate of local variability. An
+estimated-WLS fit can then use information from the current run rather than a
+fixed conventional weight.
+
+```{r}
+#| label: routine-example
+
+set.seed(606)
+
+mean_fun <- f_linear
+sigma_fun <- sigma_linear_loq_mixed
+
+routine_data <- simulate_dataset(
+  routine_design,
+  mean_fun = mean_fun,
+  variance_fun = sigma_fun
+)
+
+routine_models <- list(
+  "OLS" = fit_ols(routine_data),
+  "WLS estimated" = fit_wls_empirical(routine_data),
+  "WLS 1/x2" = fit_wls_x2(routine_data)
+)
+```
+
+```{r}
+#| label: routine-variance-check
+#| fig-cap: "Replicates at the three routine levels make observed variability visible for each run."
+
+observed_variance <- routine_data[
+  ,
+  .(
+    response_sd = sd(y),
+    response_mean = mean(y)
+  ),
+  by = x
+]
+
+ggplot(observed_variance, aes(x = x, y = response_sd)) +
+  geom_point(size = 3) +
+  geom_line() +
+  labs(
+    x = "Concentration",
+    y = "Observed response SD"
+  ) +
+  theme_bw()
+```
+
+The three points do not re-validate the complete variance curve. They provide a
+run-level check: do low, middle, and high variability look compatible with the
+validated structure? If not, the laboratory should investigate the run or
+return to a broader validation-style assessment rather than silently changing
+weights.
+
+# QC closes the loop
+
+Calibration standards establish the model; quality-control (QC) samples test
+whether it works on independent material. Place QCs at concentrations that
+matter analytically—at least low, middle, and high, with particular attention
+near decision limits and the LOQ. Track their bias, relative prediction error,
+and prediction-interval coverage over time.
+
+```{r}
+#| label: qc-performance
+#| fig-cap: "Routine QC checks prediction error and interval coverage at the concentrations where decisions are made."
+
+qc_design <- data.table(
+  x = rep(c(5, 50, 95), each = 100)
+)
+
+qc_data <- simulate_dataset(
+  qc_design,
+  mean_fun = mean_fun,
+  variance_fun = sigma_fun
+)
+
+qc_predictions <- predict_calibration_model(
+  routine_models[["WLS estimated"]],
+  test_data = qc_data,
+  variance_fun = sigma_fun
+)
+
+qc_summary <- qc_predictions[
+  ,
+  .(
+    bias = mean(error),
+    rmse = sqrt(mean(error^2)),
+    mean_absolute_relative_error = mean(abs(relative_error)),
+    coverage = mean(x_true >= x_lpl & x_true <= x_upl),
+    mean_interval_width = metric_mean_pi_width(.SD)
+  ),
+  by = x_true
+]
+
+kable(
+  qc_summary,
+  digits = 3,
+  caption = "Illustrative QC prediction checks by concentration level."
+)
+```
+
+# Recommendation
+
+I agree with the proposed workflow, with one important boundary. **Use a
+multi-level, replicated design during validation to test linearity and define
+the variance structure. Then use a 3 x 5 routine design with estimated WLS to
+check that the validated variance structure remains stable and that QC
+prediction performance is acceptable at low, middle, and high concentration.**
+
+This is statistically sound because WLS gains its efficiency from a credible
+variance model, and routine replicates provide evidence for that model in the
+current run. It is not a claim that 3 x 5 can independently prove linearity or
+fully estimate an arbitrary variance curve. It is a compact monitoring design
+that becomes defensible only after the broader validation work has established
+the model.
+
+# Take-home message
+
+There is one coherent answer to the opening question. Invest calibration points
+first in learning the method—shape and variance—then invest routine points in
+verifying that the learned model still predicts acceptably. A 3 x 5,
+data-estimated WLS calibration is a strong routine choice for a validated linear
+method, provided QC results and replicate variability continue to support it.

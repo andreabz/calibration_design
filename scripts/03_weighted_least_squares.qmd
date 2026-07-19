@@ -46,13 +46,7 @@ source(here("R", "variance_functions.R"))
 set.seed(123)
 
 mean_fun <- f_linear
-sigma_fun <- function(x) {
-  sigma_constant_rsd(
-    x,
-    mean_fun = mean_fun,
-    rsd = 0.10
-  )
-}
+sigma_fun <- sigma_linear_constant_rsd
 
 designs <- list(
   "15 x 1" = design_15x1(1, 100),
@@ -62,6 +56,13 @@ designs <- list(
 ```
 
 # Compare weight functions
+
+Before fitting a model, this code puts all candidate weights on the same
+concentration grid. The first curve is the inverse of the *simulated* response
+variance. It is an oracle benchmark: in a real method we do not know it in
+advance. The other curves are the practical shortcuts $1/x$ and $1/x^2$. Seeing
+them together makes the modelling assumption visible: the steeper the curve,
+the more strongly the fit prioritises low-concentration observations.
 
 ```{r}
 #| label: weight-plot
@@ -94,7 +95,7 @@ weight_plot_data <- rbindlist(
 plot_weights(weight_plot_data)
 ```
 
-A steeper weight curve gives much more importance to the low concentration standards. That may be appropriate under constant RSD, but it becomes risky if the low end has a noise floor. The important question is therefore not whether a weighting rule is familiar, but whether it matches the method.
+A steeper weight curve gives much more importance to the low concentration standards. Under constant RSD, $\sigma(x) \propto x$, so inverse variance is proportional to $1/x^2$; the overlap in the figure is therefore the reason that rule works here. It becomes risky if the low end has a noise floor. The important question is therefore not whether a weighting rule is familiar, but whether it matches the method.
 
 # Fit OLS and WLS models
 
@@ -123,6 +124,14 @@ models <- lapply(
 ```
 
 Empirical WLS requires replicated concentration levels. With 15 unreplicated levels, the calibration experiment has no direct way to estimate the variance at each level, so the empirical approach falls back to OLS. That is not a coding detail; it is an experimental design consequence.
+
+The model list makes the comparison deliberately explicit. `WLS true` uses the
+simulated standard deviations and is included only as a best-case benchmark.
+`WLS estimated` first calculates the within-level replicate variance and then
+uses its inverse as the regression weight. `WLS 1/x` and `WLS 1/x2` are fixed
+rules that do not learn from the replicate data. Each fit is then inverted for
+the same set of future samples, so differences in the table are differences in
+the calibration strategy rather than differences in the samples being tested.
 
 # Prediction performance
 
@@ -178,6 +187,14 @@ kable(
 
 The true-variance WLS fit is the benchmark because it uses information that is available only in simulation. The simple $1/x^2$ rule should be close when the constant-RSD assumption is true. The $1/x$ rule is a milder correction, and empirical weighting depends strongly on whether the design contains enough replicates to estimate variability.
 
+For a *validated linear method* with changing variance, I would choose **3 x 5
+with estimated WLS** as the routine design. Five replicates at low, middle, and
+high concentration let us estimate and check variability in the current run,
+instead of simply assuming a familiar weight such as $1/x^2$. In this example
+it also performs well for bias and prediction error. This is a routine choice,
+not a replacement for validation: use more distributed levels during
+validation when the aim is to establish linearity and the full variance pattern.
+
 ```{r}
 #| label: error-profiles
 #| fig-cap: "Relative prediction error by design and model."
@@ -194,4 +211,4 @@ for (design in names(prediction_tables)) {
 
 # Take-home message
 
-Weighted least squares is useful because it connects calibration fitting with analytical precision. It is not a universal upgrade over OLS. If the weights describe the real variance structure, WLS can improve prediction and uncertainty. If the weights are only a habit, they can move the calibration in the wrong direction.
+Weighted least squares is useful because it connects calibration fitting with analytical precision. It is not a universal upgrade over OLS. If the weights describe the real variance structure, WLS can improve prediction and uncertainty statements. If the weights are only a habit, they can move the calibration in the wrong direction. For routine calibration of a validated linear method, 3 x 5 with data-estimated WLS is the practical choice here; use a broader, more distributed design when validating the response shape and variance function.

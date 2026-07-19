@@ -44,14 +44,7 @@ source(here("R", "variance_functions.R"))
 set.seed(321)
 
 mean_fun <- f_linear
-sigma_fun <- function(x) {
-  sigma_loq_mixed(
-    x,
-    mean_fun = mean_fun,
-    sigma_floor = 4,
-    rsd = 0.07
-  )
-}
+sigma_fun <- sigma_linear_loq_mixed
 
 designs <- list(
   "15 x 1" = design_15x1(1, 100),
@@ -199,6 +192,14 @@ kable(
 
 A global average can hide the region that matters most. For LOQ-related applications, the low concentration region deserves its own view.
 
+`coverage` is the proportion of simulated true concentrations that fall inside
+their nominal 95% concentration prediction intervals. It is a calibration of
+the uncertainty statement, not a measure of accuracy: a model can obtain high
+coverage simply by making very wide intervals. For that reason it is reported
+next to interval width, RMSE, and relative error. A useful interval should be
+close to 95% coverage *and* no wider than necessary, especially in the region
+where decisions are made.
+
 ```{r}
 #| label: region-table
 
@@ -237,6 +238,40 @@ kable(
 )
 ```
 
+```{r}
+#| label: coverage-profiles
+#| fig-cap: "Empirical 95% prediction-interval coverage by concentration. The dashed line is the nominal target."
+
+for (design in names(prediction_tables)) {
+  for (model in names(prediction_tables[[design]])) {
+    print(
+      plot_prediction_interval_coverage(
+        prediction_tables[[design]][[model]]
+      ) +
+        labs(title = paste(design, model))
+    )
+  }
+}
+```
+
+The models can look very similar in overall RMSE and average prediction error.
+That is not surprising once the setup is separated into its parts: all models
+use the correct linear mean form, the mixed variance is only a moderate
+departure from the simple rules, and global RMSE averages away the low-end
+region where a mismatch matters most. Much of the remaining error is also
+irreducible measurement noise. The regional table and coverage profiles are
+therefore more informative than a small difference in one global summary.
+
 # Take-home message
 
 WLS requires a variance model. A simple global rule may be convenient and may even be approximately right over part of the range, but that does not make it right near the LOQ. When the method has a low-concentration noise floor, the analyst should inspect low-level residuals, replicate behavior, and prediction performance separately from the global calibration summary.
+
+For this scenario, it would be reasonable to regard all the linear fits as
+potentially suitable if their low-level recovery and interval coverage meet the
+method's acceptance criteria. I would choose 3 x 5 with estimated WLS for
+routine calibration *after validation*: its replicates let the laboratory
+estimate and monitor the variance at low, middle, and high concentrations,
+instead of assuming a fixed $1/x^2$ rule. This is statistically more auditable
+than applying a familiar weight by default, but it does not replace a broader
+validation design for testing linearity or discovering changes between the
+three routine levels.
