@@ -49,3 +49,4 @@ Thumbs.db
 *.tmp
 *.zip
 *.tar.gz
+**/*.quarto_ipynb

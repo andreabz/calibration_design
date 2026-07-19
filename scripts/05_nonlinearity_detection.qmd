@@ -49,7 +49,7 @@ mean_fun <- function(x) {
   f_saturation_quadratic(
     x,
     slope = 1,
-    curvature = 0.0008
+    curvature = 0.0010
   )
 }
 
@@ -242,7 +242,7 @@ ggplot(
   theme_bw()
 ```
 
-The dashed line marks the false-positive rate expected from a 5% test when no curvature exists. Detection rates above that line indicate that the design has some power to see the downward bend.
+The dashed line marks the rejection rate expected under the null hypothesis (5%). Detection rates above that line reflect the statistical power of the design to detect the downward curvature.
 
 # Interpretation
 

@@ -14,7 +14,7 @@ execute:
 
 When the response variability changes with concentration, ordinary least squares still fits a line, but it fits that line as if every point had the same response variance. Weighted least squares changes the question. Instead of treating all residuals equally, it gives more influence to observations expected to be more precise.
 
-For approximately constant relative standard deviation, the response standard deviation is roughly proportional to concentration. The variance is then roughly proportional to concentration squared, which explains the common analytical rule $w = 1/x^2$.
+For approximately constant relative standard deviation, the response standard deviation is roughly proportional to concentration. The variance is then roughly proportional to concentration squared, which explains the common analytical rule to set weights as $w = 1/x^2$.
 
 That rule is not magic. It is an assumption about the measurement process.
 
