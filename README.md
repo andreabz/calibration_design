@@ -2,7 +2,7 @@
 
 This repository contains a small simulation series about calibration design in chemical analysis.
 
-The goal is practical rather than theoretical: use reproducible R examples to show how calibration design, error structure, weighting, and mild non-linearity affect concentration prediction and prediction intervals.
+The goal is practical rather than theoretical: follow one question—**how should we invest calibration points?**—from method validation to routine analysis. The reproducible examples show how calibration design, error structure, weighting, mild non-linearity, concentration prediction, and prediction intervals fit into one workflow.
 
 ## Audience
 
@@ -14,20 +14,30 @@ The material is written for:
 
 ## Questions explored
 
-The series currently covers five questions:
+The series covers six linked contexts:
 
 1. With 15 calibration measurements, should we use many concentration levels or fewer replicated levels?
 2. What changes when the response is linear but measurement variance is not constant?
 3. When does weighted least squares help, and what do common weight functions assume?
 4. What happens when a simple weight function is only partly true near the LOQ?
 5. Can different calibration designs detect mild downward non-linearity equally well?
+6. How should a broad validation design become a compact, monitored routine calibration design?
+
+The narrative starts with a linear response and constant absolute error, then
+introduces constant relative error, data-estimated weights, low-end weight
+mismatch, and slight curvature. The conclusion is deliberately conditional:
+use multiple distributed levels and replication during validation to establish
+linearity and the variance structure; then, for a validated linear method, use
+a 3 x 5 routine design with data-estimated WLS and QC checks at relevant low,
+middle, and high concentrations. The routine design monitors a validated model;
+it does not replace validation.
 
 ## Repository structure
 
 ```text
 R/        Reusable simulation, fitting, prediction, metric, and plotting helpers
 scripts/  Executable Quarto source articles with R code and figures
-posts/    Short LinkedIn-ready QMD drafts for copy-paste publication
+posts/    Short LinkedIn-ready QMD drafts and the final PDF-carousel source
 _site/    Rendered website output, created by Quarto and GitHub Actions
 ```
 
@@ -55,4 +65,4 @@ In the GitHub repository settings, enable Pages with **GitHub Actions** as the s
 
 ## Notes
 
-The simulations are intentionally small and transparent. They are not meant to replace validation requirements or laboratory-specific method assessment. They are meant to make calibration assumptions visible and easier to discuss.
+The simulations are intentionally small and transparent. They are not meant to replace validation requirements or laboratory-specific method assessment. They are meant to make calibration assumptions visible and easier to discuss. WLS is useful when its weights describe the method's actual variability; it is not a blanket guarantee of lower bias in every finite simulated run.

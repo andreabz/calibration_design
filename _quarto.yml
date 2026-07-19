@@ -24,6 +24,8 @@ website:
             text: LOQ weight mismatch
           - href: scripts/05_nonlinearity_detection.qmd
             text: Downward non-linearity
+          - href: scripts/06_validation_to_routine.qmd
+            text: Validation to routine
       - text: LinkedIn drafts
         menu:
           - href: posts/01_calibration_design_linkedin.qmd
@@ -36,6 +38,8 @@ website:
             text: Post 04
           - href: posts/05_nonlinearity_detection_linkedin.qmd
             text: Post 05
+          - href: posts/06_validation_to_routine_carousel.pdf
+            text: Post 06 PDF carousel
 
 format:
   html:

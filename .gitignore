@@ -10,6 +10,7 @@
 /.quarto/
 *.html
 *.pdf
+!posts/06_validation_to_routine_carousel.pdf
 *.docx
 *.log
 *.aux
