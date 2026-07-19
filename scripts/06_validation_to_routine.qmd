@@ -173,7 +173,7 @@ and prediction-interval coverage over time.
 
 ```{r}
 #| label: qc-performance
-#| fig-cap: "Routine QC checks prediction error and interval coverage at the concentrations where decisions are made."
+#| fig-cap: "Routine QC checks prediction error at the concentrations where decisions are made."
 
 qc_design <- data.table(
   x = rep(c(5, 50, 95), each = 100)
@@ -196,9 +196,7 @@ qc_summary <- qc_predictions[
   .(
     bias = mean(error),
     rmse = sqrt(mean(error^2)),
-    mean_absolute_relative_error = mean(abs(relative_error)),
-    coverage = mean(x_true >= x_lpl & x_true <= x_upl),
-    mean_interval_width = metric_mean_pi_width(.SD)
+    mean_absolute_relative_error = mean(abs(relative_error))
   ),
   by = x_true
 ]
@@ -212,11 +210,11 @@ kable(
 
 # Recommendation
 
-I agree with the proposed workflow, with one important boundary. **Use a
+Use a
 multi-level, replicated design during validation to test linearity and define
 the variance structure. Then use a 3 x 5 routine design with estimated WLS to
 check that the validated variance structure remains stable and that QC
-prediction performance is acceptable at low, middle, and high concentration.**
+prediction performance is acceptable at low, middle, and high concentration.
 
 This is statistically sound because WLS gains its efficiency from a credible
 variance model, and routine replicates provide evidence for that model in the
