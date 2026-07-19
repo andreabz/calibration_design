@@ -10,6 +10,7 @@ format:
       - paperheight=10in
       - margin=0.75in
     fontsize: 18pt
+    fontfamily: tgheros
     toc: false
 execute:
   echo: false
@@ -91,9 +92,8 @@ Use independent QCs at relevant low, middle, and high concentrations.
 
 Track:
 
-- bias and relative prediction error;
-- prediction-interval width; and
-- **coverage**: does a nominal 95% interval contain about 95% of true QC concentrations?
+- bias and 
+- relative prediction error.
 
 If variance or QC prediction changes, investigate; do not silently retain the
 old weight rule.
@@ -110,5 +110,3 @@ old weight rule.
 
 This is how the calibration design, the statistical model, and the analytical
 decision all support the same workflow.
-
-#AnalyticalChemistry #Chemometrics #Calibration #WeightedLeastSquares

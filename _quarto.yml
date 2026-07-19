@@ -38,6 +38,8 @@ website:
             text: Post 04
           - href: posts/05_nonlinearity_detection_linkedin.qmd
             text: Post 05
+          - href: posts/06_validation_to_routine.qmd
+            text: Post 06
           - href: posts/06_validation_to_routine_carousel.pdf
             text: Post 06 PDF carousel
 

@@ -1,0 +1,32 @@
+---
+title: "LinkedIn post 06 - A validation-to-routine calibration workflow"
+---
+
+One of the most common questions in analytical calibration is surprisingly simple:
+
+"If I have a fixed number of measurements, where should I invest them?"
+
+The instinct is often to look for a single "best" calibration design.
+
+In reality, the answer depends on what you're trying to learn.
+
+During method validation, the goal is understanding the method itself:
+✔️ Is the response truly linear?
+✔️ Is there curvature or local lack of fit?
+✔️ How does measurement variance change across the range?
+
+That requires many concentration levels and enough replication to separate random scatter from systematic behavior.
+
+Once the method has been validated, the objective changes.
+
+For routine calibration, we're no longer discovering the method—we're verifying that the validated model still describes reality.
+
+At that stage, a compact design (for example 3 concentration levels × 5 replicates) can efficiently monitor both calibration performance and local variability, provided that weighted least squares (WLS) is based on the variance actually observed during validation—not on a default $1/x^2$ rule applied by habit.
+
+The key idea is simple:
+
+Validation learns the model. Routine calibration monitors the model.
+
+Using the same calibration strategy for both phases often means collecting the wrong information at the wrong time.
+
+How do you design your calibration experiments? Do you prioritize concentration coverage, replication, or a balance of both?
