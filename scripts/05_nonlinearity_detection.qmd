@@ -1,6 +1,6 @@
 ---
 title: "Can calibration designs detect small downward non-linearity equally well?"
-author: "Calibration simulation series"
+author: "Andrea Bazzano"
 format:
   html:
     toc: true

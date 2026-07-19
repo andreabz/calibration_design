@@ -1,6 +1,6 @@
 ---
 title: "When variability changes: introducing weighted least squares"
-author: "Calibration simulation series"
+author: "Andrea Bazzano"
 format:
   html:
     toc: true

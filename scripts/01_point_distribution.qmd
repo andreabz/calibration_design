@@ -1,6 +1,6 @@
 ---
 title: "Calibration design: how should we spend 15 measurements?"
-author: "Calibration simulation series"
+author: "Andrea Bazzano"
 format:
   html:
     toc: true

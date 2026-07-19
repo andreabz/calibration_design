@@ -1,7 +1,7 @@
 ---
 title: "How should I invest my calibration points?"
 subtitle: "A validation-to-routine calibration workflow"
-author: "Calibration simulation series"
+author: "Andrea Bazzano"
 format:
   pdf:
     title-block: false

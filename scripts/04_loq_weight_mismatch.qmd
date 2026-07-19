@@ -1,6 +1,6 @@
 ---
 title: "When the weighting model is only partly true"
-author: "Calibration simulation series"
+author: "Andrea Bazzano"
 format:
   html:
     toc: true

@@ -1,6 +1,6 @@
 ---
 title: "Calibration curves are not only about linearity"
-author: "Calibration simulation series"
+author: "Andrea Bazzano"
 format:
   html:
     toc: true
